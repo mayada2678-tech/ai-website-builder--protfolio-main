@@ -9,13 +9,15 @@ from openai import OpenAI
 
 
 st.set_page_config(
-    page_title="AI Website Builder",
+    page_title="KI Website Builder Portfolio",
     page_icon="🚀",
     layout="wide",
 )
 
 OPENAI_MODEL = "gpt-4o-mini"
 FORMSPREE_ENDPOINT = "https://formspree.io/f/mnpqnyvk"
+RESUME_FILE_NAME = "lebenslauf_mayada_esmail.pdf"
+RESUME_FILE_PATH = Path(__file__).with_name(RESUME_FILE_NAME)
 VERCEL_DEPLOYMENTS_URL = (
     "https://api.vercel.com/v13/deployments"
     "?skipAutoDetectionConfirmation=1"
@@ -42,7 +44,7 @@ DEFAULT_STATE = {
     "live_url": "",
     "deployment_url": "",
     "deployment_id": "",
-    "project_name": "ai-website-builder",
+    "project_name": "ai-website-builder-portfolio",
     "delete_confirmation": False,
 }
 
@@ -89,7 +91,7 @@ def queue_html_update(html: str) -> None:
 def safe_project_name(name: str) -> str:
     """Erstellt einen gültigen Vercel-Projektnamen."""
     safe_name = re.sub(r"[^a-z0-9-]", "-", name.lower()).strip("-")
-    return safe_name[:100] or "ai-website-builder"
+    return safe_name[:100] or "ai-website-builder-portfolio"
 
 
 def get_project_name_from_url(live_url: str) -> str:
@@ -180,10 +182,29 @@ Regeln:
 - Antworte ausschließlich mit vollständigem HTML.
 - Kein Markdown, keine Backticks und keine Erklärung.
 
+Hero-Buttons:
+- Ersetze die beiden bestehenden Buttons der Hero-Section vollständig und unverändert durch diesen nativen HTML-Code:
+<div style="display: flex; gap: 15px; justify-content: center; margin-top: 25px;">
+  
+    <!-- Button 1: Scrollt direkt zum Formular nach unten via JavaScript -->
+    <button onclick="document.getElementById('contact-form') ? document.getElementById('contact-form').scrollIntoView({{behavior: 'smooth'}}) : window.scrollTo({{top: document.body.scrollHeight, behavior: 'smooth'}});" 
+                    style="padding: 12px 24px; background: linear-gradient(to right, #2563eb, #7c3aed); color: white; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);">
+        Projekt anfragen
+    </button>
+
+    <!-- Button 2: Öffnet den Lebenslauf direkt über einen absoluten Link -->
+    <a href="./lebenslauf_mayada_esmail.pdf" 
+         target="_blank" 
+         style="padding: 12px 24px; background: #1e293b; color: #f1f5f9; font-weight: 600; border: 1px solid #334155; border-radius: 8px; text-decoration: none; display: inline-block;">
+        Lebenslauf ansehen
+    </a>
+
+</div>
+
 Kontaktformular:
 - Erstelle einen sichtbaren, modernen Kontaktbereich.
 - Das Formular muss EXAKT diesen Formspree-Endpunkt verwenden:
-  <form action="{FORMSPREE_ENDPOINT}" method="POST">
+    <form id="contact-form" action="{FORMSPREE_ENDPOINT}" method="POST">
 - Verwende kein JavaScript oder AJAX zum Absenden.
 - Das Formular benötigt sichtbare Labels sowie diese Pflichtfelder:
   <input id="name" type="text" name="name" required>
@@ -220,9 +241,28 @@ Regeln:
   sofern ihre Änderung nicht ausdrücklich verlangt wird.
 - Tailwind CSS muss erhalten bleiben.
 
+Hero-Buttons:
+- Die Hero-Section muss genau diesen nativen HTML-Code für ihre beiden Buttons enthalten:
+<div style="display: flex; gap: 15px; justify-content: center; margin-top: 25px;">
+  
+    <!-- Button 1: Scrollt direkt zum Formular nach unten via JavaScript -->
+    <button onclick="document.getElementById('contact-form') ? document.getElementById('contact-form').scrollIntoView({{behavior: 'smooth'}}) : window.scrollTo({{top: document.body.scrollHeight, behavior: 'smooth'}});" 
+                    style="padding: 12px 24px; background: linear-gradient(to right, #2563eb, #7c3aed); color: white; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);">
+        Projekt anfragen
+    </button>
+
+    <!-- Button 2: Öffnet den Lebenslauf direkt über einen absoluten Link -->
+    <a href="./lebenslauf_mayada_esmail.pdf" 
+         target="_blank" 
+         style="padding: 12px 24px; background: #1e293b; color: #f1f5f9; font-weight: 600; border: 1px solid #334155; border-radius: 8px; text-decoration: none; display: inline-block;">
+        Lebenslauf ansehen
+    </a>
+
+</div>
+
 Kontaktformular:
 - Ein Kontaktformular muss diesen Formspree-Endpunkt verwenden:
-  <form action="{FORMSPREE_ENDPOINT}" method="POST">
+    <form id="contact-form" action="{FORMSPREE_ENDPOINT}" method="POST">
 - Das Formular muss die Felder `name`, `email`, `subject` und `message` haben.
 - Alle Felder besitzen das Attribut `required`.
 - Der Button hat type="submit" und lautet „Nachricht senden“.
@@ -348,6 +388,19 @@ def publish_website() -> None:
 
     files = [{"file": "index.html", "data": html}]
 
+    if not RESUME_FILE_PATH.is_file():
+        raise ValueError(
+            f"Die Lebenslauf-Datei '{RESUME_FILE_NAME}' wurde nicht gefunden."
+        )
+
+    files.append(
+        {
+            "file": RESUME_FILE_NAME,
+            "data": base64.b64encode(RESUME_FILE_PATH.read_bytes()).decode("utf-8"),
+            "encoding": "base64",
+        }
+    )
+
     for file_name, asset in st.session_state.assets.items():
         files.append(
             {
@@ -412,7 +465,7 @@ def publish_website() -> None:
     st.session_state.published_html = html
 
 
-st.title("🚀 KI Website Builder")
+st.title("🚀 KI Website Builder Portfolio")
 st.caption("Website erstellen, bearbeiten, prüfen und veröffentlichen.")
 
 new_tab, manage_tab = st.tabs(
