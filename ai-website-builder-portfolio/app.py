@@ -140,7 +140,76 @@ def create_preview_html(html: str) -> str:
         data_url = f"data:{asset['mime_type']};base64,{asset['base64']}"
         preview_html = preview_html.replace(file_name, data_url)
 
-    return preview_html
+    return add_chatbot_widget(preview_html)
+
+
+def add_chatbot_widget(html: str) -> str:
+        """Fügt den serverseitig angebundenen Portfolio-Chat vor dem Body-Ende ein."""
+        if 'id="portfolio-chatbot"' in html:
+                return html
+
+        chatbot_html = """
+<aside id="portfolio-chatbot" style="position:fixed;right:20px;bottom:20px;z-index:9999;width:min(360px,calc(100vw - 32px));font-family:Arial,sans-serif;">
+    <button id="portfolio-chat-toggle" type="button" aria-expanded="false" style="width:100%;padding:14px 16px;background:#2563eb;color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:600;text-align:left;">Fragen zu Mayadas Erfahrung</button>
+    <section id="portfolio-chat-panel" hidden style="margin-top:8px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 12px 30px rgba(15,23,42,.18);overflow:hidden;">
+        <div id="portfolio-chat-messages" aria-live="polite" style="height:260px;overflow-y:auto;padding:14px;color:#1e293b;font-size:14px;line-height:1.45;"><p style="margin:0;">Gerne beantworte ich Fragen zu Mayadas Erfahrung, Projekten und Kompetenzen.</p></div>
+        <form id="portfolio-chat-form" style="display:flex;gap:8px;padding:12px;border-top:1px solid #e2e8f0;">
+            <input id="portfolio-chat-input" type="text" aria-label="Frage an den Portfolio-Assistenten" placeholder="Ihre Frage..." required style="min-width:0;flex:1;padding:10px;border:1px solid #94a3b8;border-radius:6px;">
+            <button type="submit" style="padding:10px 14px;background:#1e293b;color:#fff;border:0;border-radius:6px;cursor:pointer;">Senden</button>
+        </form>
+    </section>
+</aside>
+<script>
+(() => {
+    const toggle = document.getElementById('portfolio-chat-toggle');
+    const panel = document.getElementById('portfolio-chat-panel');
+    const form = document.getElementById('portfolio-chat-form');
+    const input = document.getElementById('portfolio-chat-input');
+    const messages = document.getElementById('portfolio-chat-messages');
+    const history = [];
+    const addMessage = (text, label) => {
+        const message = document.createElement('p');
+        message.style.margin = '0 0 10px';
+        message.innerHTML = '<strong>' + label + ':</strong> ';
+        message.append(document.createTextNode(text));
+        messages.append(message);
+        messages.scrollTop = messages.scrollHeight;
+    };
+    toggle.addEventListener('click', () => {
+        panel.hidden = !panel.hidden;
+        toggle.setAttribute('aria-expanded', String(!panel.hidden));
+        if (!panel.hidden) input.focus();
+    });
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const question = input.value.trim();
+        if (!question) return;
+        addMessage(question, 'Sie');
+        history.push({role: 'user', content: question});
+        input.value = '';
+        input.disabled = true;
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({question, history: history.slice(-6)})
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Der Assistent ist momentan nicht erreichbar.');
+            addMessage(data.answer, 'Assistent');
+            history.push({role: 'assistant', content: data.answer});
+        } catch (error) {
+            addMessage(error.message, 'Hinweis');
+        } finally {
+            input.disabled = false;
+            input.focus();
+        }
+    });
+})();
+</script>
+"""
+
+        return re.sub(r"</body\\s*>", chatbot_html + "</body>", html, count=1, flags=re.I)
 
 
 def ask_ai_for_html(system_instruction: str, user_instruction: str) -> str:
@@ -383,10 +452,25 @@ def delete_published_website() -> None:
     
 def publish_website() -> None:
     """Veröffentlicht den aktuellen HTML-Entwurf auf Vercel."""
-    html = require_complete_html(st.session_state.generated_html)
+    html = add_chatbot_widget(require_complete_html(st.session_state.generated_html))
     project_name = safe_project_name(st.session_state.project_name)
 
-    files = [{"file": "index.html", "data": html}]
+    files = [
+        {"file": "index.html", "data": html},
+        {
+            "file": "api/chat.py",
+            "data": Path(__file__).with_name("api").joinpath("chat.py").read_text(
+                encoding="utf-8"
+            ),
+        },
+        {
+            "file": "api/requirements.txt",
+            "data": Path(__file__)
+            .with_name("api")
+            .joinpath("requirements.txt")
+            .read_text(encoding="utf-8"),
+        },
+    ]
 
     if not RESUME_FILE_PATH.is_file():
         raise ValueError(
@@ -413,6 +497,7 @@ def publish_website() -> None:
     payload = {
         "name": project_name,
         "target": "production",
+        "env": {"OPENAI_API_KEY": OPENAI_API_KEY},
         "files": files,
         "projectSettings": {
             "framework": None,
