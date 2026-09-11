@@ -313,7 +313,7 @@ def add_chatbot_widget(html: str) -> str:
         <span class="portfolio-chat-control" aria-hidden="true" style="position:relative;color:#fbbf24;font-size:20px;line-height:1;">−</span>
     </button>
     <section id="portfolio-chat-panel" style="margin-top:7px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 20px 48px rgba(15,23,42,.24);overflow:hidden;">
-        <div style="padding:15px;background:#f8fafc;border-bottom:1px solid #e2e8f0;color:#334155;font-size:13px;line-height:1.5;"><span style="display:block;margin-bottom:3px;color:#0f172a;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;">Ihr direkter Draht zu Mayada</span>Ich beantworte Fragen zu Erfahrung, Kompetenzen und Projekten auf Basis ihres Lebenslaufs.</div>
+        <div style="padding:15px;background:#f8fafc;border-bottom:1px solid #e2e8f0;color:#334155;font-size:13px;line-height:1.5;"><span style="display:block;margin-bottom:3px;color:#0f172a;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;">Ihr direkter Draht zu Mayada</span>Ich beantworte Fragen zu Erfahrung, Kompetenzen und Projekten.</div>
         <div id="portfolio-chat-messages" aria-live="polite" style="height:230px;overflow-y:auto;padding:15px;background:#fff;color:#1e293b;font-size:14px;line-height:1.55;"><p style="max-width:90%;margin:0;padding:11px 12px;background:#eefbf8;border-left:3px solid #0f766e;border-radius:0 7px 7px 0;">Willkommen. Wobei kann ich Sie zu Mayadas Profil unterstützen?</p></div>
         <div id="portfolio-chat-suggestions" style="display:flex;flex-wrap:wrap;gap:6px;padding:0 13px 13px;background:#fff;"><button type="button" data-question="Welche Kompetenzen bringt Mayada mit?" style="padding:6px 8px;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:5px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Kompetenzen</button><button type="button" data-question="Welche Projekterfahrung hat Mayada?" style="padding:6px 8px;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:5px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Projekterfahrung</button><button type="button" data-question="Ist Mayada für mein Projekt geeignet?" style="padding:6px 8px;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:5px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Projektanfrage</button></div>
         <form id="portfolio-chat-form" style="display:flex;gap:8px;padding:12px;border-top:1px solid #e2e8f0;background:#fff;">
@@ -336,6 +336,12 @@ def add_chatbot_widget(html: str) -> str:
     const messages = document.getElementById('portfolio-chat-messages');
     const history = [];
     let voiceEnabled = true;
+    const cleanAssistantText = (text) => text
+        .replace(/\*\*/g, '')
+        .replace(/__/g, '')
+        .replace(/`/g, '')
+        .replace(/\*/g, '')
+        .trim();
     const speak = (text) => {
         if (!voiceEnabled || !('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
@@ -389,9 +395,10 @@ def add_chatbot_widget(html: str) -> str:
             if (typeof data.answer !== 'string' || !data.answer.trim()) {
                 throw new Error('Der Assistent konnte gerade keine Antwort erstellen. Bitte versuchen Sie es erneut.');
             }
-            addMessage(data.answer, 'Assistent');
-            history.push({role: 'assistant', content: data.answer});
-            speak(data.answer);
+            const answer = cleanAssistantText(data.answer);
+            addMessage(answer, 'Assistent');
+            history.push({role: 'assistant', content: answer});
+            speak(answer);
         } catch (error) {
             addMessage(error.message, 'Hinweis');
         } finally {
