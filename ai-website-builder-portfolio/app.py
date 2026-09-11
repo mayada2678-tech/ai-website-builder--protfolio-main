@@ -186,6 +186,8 @@ def add_project_interactions(html: str) -> str:
 .portfolio-nav-link::after { content:''; position:absolute; left:0; right:0; bottom:-6px; height:2px; background:#fbbf24; border-radius:2px; transform:scaleX(0); transform-origin:center; transition:transform .25s ease; }
 .portfolio-nav-link:hover { color:#fbbf24 !important; transform:translateY(-2px); }
 .portfolio-nav-link:hover::after { transform:scaleX(1); }
+.portfolio-sticky-nav { position:sticky !important; top:0; z-index:900; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); box-shadow:0 8px 24px rgba(15,23,42,.12); }
+section[id], [data-about], [data-projects], [data-milestones], [data-contact] { scroll-margin-top:96px; }
 .portfolio-expertise-card { position:relative; overflow:hidden; transition:transform .35s ease,border-color .35s ease,box-shadow .35s ease !important; animation:portfolioExpertiseEnter .7s cubic-bezier(.2,.75,.25,1) both,portfolioExpertiseFloat 5.5s ease-in-out .8s infinite; }
 .portfolio-expertise-card::before { content:''; position:absolute; inset:0; opacity:0; background:linear-gradient(130deg,rgba(56,189,248,.13),transparent 48%,rgba(124,58,237,.13)); transition:opacity .35s ease; pointer-events:none; }
 .portfolio-expertise-card:hover { transform:translateY(-7px) !important; border-color:#38bdf8 !important; box-shadow:0 14px 34px rgba(37,99,235,.17),0 8px 22px rgba(124,58,237,.12) !important; }
@@ -222,6 +224,7 @@ def add_project_interactions(html: str) -> str:
     }
     const navigation = document.querySelector('nav');
     if (navigation) {
+        navigation.classList.add('portfolio-sticky-nav');
         navigation.querySelectorAll('a').forEach((link, index) => {
             link.classList.add('portfolio-nav-link');
             link.style.animationDelay = `${index * 90}ms`;
