@@ -223,6 +223,9 @@ def add_chatbot_widget(html: str) -> str:
                     : (data.error || 'Der Assistent ist momentan nicht erreichbar.');
                 throw new Error(message);
             }
+            if (typeof data.answer !== 'string' || !data.answer.trim()) {
+                throw new Error('Der Assistent konnte gerade keine Antwort erstellen. Bitte versuchen Sie es erneut.');
+            }
             addMessage(data.answer, 'Assistent');
             history.push({role: 'assistant', content: data.answer});
         } catch (error) {
