@@ -173,7 +173,9 @@ def add_chatbot_widget(html: str) -> str:
         <div id="portfolio-chat-suggestions" style="display:flex;flex-wrap:wrap;gap:6px;padding:0 13px 13px;background:#fff;"><button type="button" data-question="Welche Kompetenzen bringt Mayada mit?" style="padding:6px 8px;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:5px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Kompetenzen</button><button type="button" data-question="Welche Projekterfahrung hat Mayada?" style="padding:6px 8px;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:5px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Projekterfahrung</button><button type="button" data-question="Ist Mayada für mein Projekt geeignet?" style="padding:6px 8px;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:5px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Projektanfrage</button></div>
         <form id="portfolio-chat-form" style="display:flex;gap:8px;padding:12px;border-top:1px solid #e2e8f0;background:#fff;">
             <input id="portfolio-chat-input" type="text" aria-label="Frage an den Portfolio-Assistenten" placeholder="Ihre Frage eingeben..." required style="min-width:0;flex:1;padding:10px 11px;color:#0f172a;background:#fff;border:1px solid #94a3b8;border-radius:6px;font:inherit;font-size:14px;outline-offset:2px;">
+            <button id="portfolio-chat-mic" type="button" aria-label="Frage per Sprache eingeben" title="Frage sprechen" style="width:40px;padding:0;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:6px;cursor:pointer;font-size:16px;">&#127908;</button>
             <button id="portfolio-chat-submit" type="submit" aria-label="Frage senden" style="padding:10px 14px;background:#0f766e;color:#fff;border:0;border-radius:6px;cursor:pointer;font:inherit;font-size:13px;font-weight:800;box-shadow:0 4px 10px rgba(15,118,110,.22);">Senden</button>
+            <button id="portfolio-chat-voice" type="button" aria-pressed="true" aria-label="Antworten vorlesen: an" title="Antworten vorlesen" style="width:40px;padding:0;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:6px;cursor:pointer;font-size:16px;">&#128266;</button>
         </form>
     </section>
 </aside>
@@ -183,9 +185,20 @@ def add_chatbot_widget(html: str) -> str:
     const panel = document.getElementById('portfolio-chat-panel');
     const form = document.getElementById('portfolio-chat-form');
     const input = document.getElementById('portfolio-chat-input');
+    const mic = document.getElementById('portfolio-chat-mic');
     const submit = document.getElementById('portfolio-chat-submit');
+    const voice = document.getElementById('portfolio-chat-voice');
     const messages = document.getElementById('portfolio-chat-messages');
     const history = [];
+    let voiceEnabled = true;
+    const speak = (text) => {
+        if (!voiceEnabled || !('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'de-DE';
+        utterance.rate = 1;
+        window.speechSynthesis.speak(utterance);
+    };
     const addMessage = (text, label, isUser = false) => {
         const message = document.createElement('p');
         message.style.cssText = 'max-width:90%;margin:0 0 10px;padding:10px 11px;border-radius:7px;' + (isUser ? 'margin-left:auto;background:#10213d;color:#fff;' : 'background:#f1f5f9;color:#1e293b;');
@@ -233,6 +246,7 @@ def add_chatbot_widget(html: str) -> str:
             }
             addMessage(data.answer, 'Assistent');
             history.push({role: 'assistant', content: data.answer});
+            speak(data.answer);
         } catch (error) {
             addMessage(error.message, 'Hinweis');
         } finally {
@@ -249,6 +263,36 @@ def add_chatbot_widget(html: str) -> str:
     });
     document.querySelectorAll('#portfolio-chat-suggestions [data-question]').forEach((button) => {
         button.addEventListener('click', () => sendQuestion(button.dataset.question));
+    });
+    voice.addEventListener('click', () => {
+        voiceEnabled = !voiceEnabled;
+        voice.setAttribute('aria-pressed', String(voiceEnabled));
+        voice.setAttribute('aria-label', 'Antworten vorlesen: ' + (voiceEnabled ? 'an' : 'aus'));
+        voice.style.background = voiceEnabled ? '#f8fafc' : '#e2e8f0';
+        if (!voiceEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+    });
+    mic.addEventListener('click', () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            addMessage('Die Spracheingabe wird von diesem Browser nicht unterstützt. Bitte tippen Sie Ihre Frage ein.', 'Hinweis');
+            return;
+        }
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'de-DE';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        mic.disabled = true;
+        mic.textContent = '...';
+        recognition.onresult = (event) => {
+            input.value = event.results[0][0].transcript;
+            form.requestSubmit();
+        };
+        recognition.onerror = () => addMessage('Die Spracheingabe konnte nicht gestartet werden. Bitte versuchen Sie es erneut.', 'Hinweis');
+        recognition.onend = () => {
+            mic.disabled = false;
+            mic.innerHTML = '&#127908;';
+        };
+        recognition.start();
     });
 })();
 </script>
