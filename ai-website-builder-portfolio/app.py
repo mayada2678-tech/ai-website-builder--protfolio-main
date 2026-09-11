@@ -140,7 +140,69 @@ def create_preview_html(html: str) -> str:
         data_url = f"data:{asset['mime_type']};base64,{asset['base64']}"
         preview_html = preview_html.replace(file_name, data_url)
 
-    return add_chatbot_widget(preview_html)
+    return add_chatbot_widget(add_project_interactions(preview_html))
+
+
+def add_project_interactions(html: str) -> str:
+        """Ergänzt interaktive Animationen für die Projekt- und Meilensteinsektion."""
+        if 'id="portfolio-project-interactions"' in html:
+                return html
+
+        interaction_html = """
+<style id="portfolio-project-interactions">
+@keyframes portfolioProjectEnter { from { opacity:0; transform:translateX(56px); } to { opacity:1; transform:translateX(0); } }
+@keyframes portfolioProjectDrift { 0%,100% { translate:0 0; } 50% { translate:12px 0; } }
+@keyframes portfolioBadgeEnter { from { opacity:0; transform:translateY(8px) scale(.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+.portfolio-project-card { position:relative; isolation:isolate; border:1px solid rgba(30,41,59,.28) !important; transform-style:preserve-3d; transition:transform .4s ease, border-color .4s ease, box-shadow .4s ease !important; will-change:transform; }
+.portfolio-project-card::before { content:''; position:absolute; inset:-1px; z-index:-1; border-radius:inherit; opacity:0; padding:1px; background:linear-gradient(125deg,#2563eb,#7c3aed,#22d3ee); transition:opacity .4s ease; -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; }
+.portfolio-project-card:hover { border-color:transparent !important; box-shadow:0 10px 30px rgba(124,58,237,.15),0 18px 46px rgba(37,99,235,.14) !important; }
+.portfolio-project-card:hover::before { opacity:1; }
+.portfolio-project-card.portfolio-project-reveal { opacity:0; }
+.portfolio-project-card.portfolio-project-reveal.is-visible { animation:portfolioProjectEnter .7s cubic-bezier(.2,.75,.25,1) forwards,portfolioProjectDrift 4.8s ease-in-out .8s infinite; }
+.portfolio-project-card:nth-child(2) { animation-delay:0ms,1.55s !important; }
+.portfolio-project-card:nth-child(3) { animation-delay:0ms,2.3s !important; }
+.portfolio-tech-badge { display:inline-flex; align-items:center; transition:transform .22s ease,background-color .22s ease,color .22s ease,box-shadow .22s ease !important; animation:portfolioBadgeEnter .45s ease both; }
+.portfolio-tech-badge:hover { transform:scale(1.05); background-color:#2563eb !important; color:#fff !important; box-shadow:0 5px 14px rgba(37,99,235,.25); }
+@media (prefers-reduced-motion:reduce) { .portfolio-project-card, .portfolio-tech-badge { animation:none !important; transition:none !important; } }
+</style>
+<script>
+(() => {
+    const section = document.querySelector('#projects, #projekte, [data-projects], [data-milestones]');
+    if (!section) return;
+    const grid = Array.from(section.querySelectorAll('div')).find((element) => element.classList.contains('grid'));
+    const cards = grid ? Array.from(grid.children).filter((element) => element.nodeType === 1) : [];
+    cards.forEach((card, index) => {
+        card.classList.add('portfolio-project-card', 'portfolio-project-reveal');
+        card.style.animationDelay = `${index * 110}ms`;
+        card.addEventListener('mousemove', (event) => {
+            const bounds = card.getBoundingClientRect();
+            const rotateY = ((event.clientX - bounds.left) / bounds.width - .5) * 7;
+            const rotateX = ((event.clientY - bounds.top) / bounds.height - .5) * -7;
+            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-5px)`;
+        });
+        card.addEventListener('mouseleave', () => { card.style.transform = ''; });
+        Array.from(card.querySelectorAll('span, a, small')).forEach((badge, badgeIndex) => {
+            if (badge.textContent.trim() && badge.textContent.length < 45) {
+                badge.classList.add('portfolio-tech-badge');
+                badge.style.animationDelay = `${220 + index * 110 + badgeIndex * 75}ms`;
+            }
+        });
+    });
+    if (!cards.length) return;
+    const revealVisibleCards = () => cards.forEach((card) => {
+        const bounds = card.getBoundingClientRect();
+        if (bounds.top < window.innerHeight - 40 && bounds.bottom > 40) {
+            card.classList.add('is-visible');
+        }
+    });
+    revealVisibleCards();
+    window.addEventListener('scroll', revealVisibleCards, { passive:true });
+    window.addEventListener('resize', revealVisibleCards);
+})();
+</script>
+"""
+
+        return re.sub(r"</body\s*>", interaction_html + "</body>", html, count=1, flags=re.I)
 
 
 def add_chatbot_widget(html: str) -> str:
@@ -542,7 +604,9 @@ def delete_published_website() -> None:
     
 def publish_website() -> None:
     """Veröffentlicht den aktuellen HTML-Entwurf auf Vercel."""
-    html = add_chatbot_widget(require_complete_html(st.session_state.generated_html))
+    html = add_chatbot_widget(
+        add_project_interactions(require_complete_html(st.session_state.generated_html))
+    )
     project_name = safe_project_name(st.session_state.project_name)
 
     files = [
