@@ -240,7 +240,8 @@ def add_chatbot_widget(html: str) -> str:
 <style>
 @keyframes portfolioChatEnter { from { opacity:0; transform:translateY(18px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
 @keyframes portfolioChatPulse { 0%,100% { box-shadow:0 0 0 0 rgba(45,212,191,.38); } 50% { box-shadow:0 0 0 5px rgba(45,212,191,0); } }
-#portfolio-chatbot { animation:portfolioChatEnter .55s ease-out both; }
+@keyframes portfolioChatFloat { 0%,100% { translate:0 0; } 50% { translate:0 -6px; } }
+#portfolio-chatbot { animation:portfolioChatEnter .55s ease-out both,portfolioChatFloat 5s ease-in-out .65s infinite; }
 #portfolio-chatbot.chat-collapsed { width:min(280px,calc(100vw - 28px)) !important; }
 #portfolio-chatbot.chat-collapsed #portfolio-chat-toggle { width:100%;min-height:64px;padding:10px 12px;border-radius:8px;background:#0b172a; }
 #portfolio-chatbot.chat-collapsed .portfolio-chat-glow, #portfolio-chatbot.chat-collapsed .portfolio-chat-control { display:none !important; }
