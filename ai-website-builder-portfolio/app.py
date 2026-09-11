@@ -153,6 +153,9 @@ def add_project_interactions(html: str) -> str:
 @keyframes portfolioProjectEnter { from { opacity:0; transform:translateX(56px); } to { opacity:1; transform:translateX(0); } }
 @keyframes portfolioProjectDrift { 0%,100% { translate:0 0; } 50% { translate:12px 0; } }
 @keyframes portfolioBadgeEnter { from { opacity:0; transform:translateY(8px) scale(.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+@keyframes portfolioAboutTitleEnter { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+@keyframes portfolioHeroEnter { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
+@keyframes portfolioHeroFloat { 0%,100% { translate:0 0; } 50% { translate:0 -7px; } }
 .portfolio-project-card { position:relative; isolation:isolate; border:1px solid rgba(30,41,59,.28) !important; transform-style:preserve-3d; transition:transform .4s ease, border-color .4s ease, box-shadow .4s ease !important; will-change:transform; }
 .portfolio-project-card::before { content:''; position:absolute; inset:-1px; z-index:-1; border-radius:inherit; opacity:0; padding:1px; background:linear-gradient(125deg,#2563eb,#7c3aed,#22d3ee); transition:opacity .4s ease; -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; }
 .portfolio-project-card:hover { border-color:transparent !important; box-shadow:0 10px 30px rgba(124,58,237,.15),0 18px 46px rgba(37,99,235,.14) !important; }
@@ -163,11 +166,30 @@ def add_project_interactions(html: str) -> str:
 .portfolio-project-card:nth-child(3) { animation-delay:0ms,2.3s !important; }
 .portfolio-tech-badge { display:inline-flex; align-items:center; transition:transform .22s ease,background-color .22s ease,color .22s ease,box-shadow .22s ease !important; animation:portfolioBadgeEnter .45s ease both; }
 .portfolio-tech-badge:hover { transform:scale(1.05); background-color:#2563eb !important; color:#fff !important; box-shadow:0 5px 14px rgba(37,99,235,.25); }
-@media (prefers-reduced-motion:reduce) { .portfolio-project-card, .portfolio-tech-badge { animation:none !important; transition:none !important; } }
+.portfolio-about-title { position:relative; display:inline-block; animation:portfolioAboutTitleEnter .8s cubic-bezier(.2,.75,.25,1) both; }
+.portfolio-about-title::after { content:''; display:block; width:56%; height:3px; margin-top:9px; background:linear-gradient(90deg,#0f766e,#38bdf8); border-radius:2px; transform-origin:left; animation:portfolioProjectEnter .7s .35s cubic-bezier(.2,.75,.25,1) both; }
+.portfolio-hero-title { animation:portfolioHeroEnter .8s cubic-bezier(.2,.75,.25,1) both,portfolioHeroFloat 5s ease-in-out .9s infinite; }
+.portfolio-hero-copy { animation:portfolioHeroEnter .7s .18s cubic-bezier(.2,.75,.25,1) both; }
+.portfolio-hero-actions { animation:portfolioHeroEnter .7s .36s cubic-bezier(.2,.75,.25,1) both; }
+@media (prefers-reduced-motion:reduce) { .portfolio-project-card, .portfolio-tech-badge, .portfolio-about-title, .portfolio-hero-title, .portfolio-hero-copy, .portfolio-hero-actions { animation:none !important; transition:none !important; } }
 </style>
 <script>
 (() => {
     const section = document.querySelector('#projects, #projekte, [data-projects], [data-milestones]');
+    const aboutSection = document.querySelector('#about, #ueber-mich, #über-mich, [data-about]');
+    if (aboutSection) {
+        const aboutTitle = aboutSection.querySelector('h1, h2, h3');
+        if (aboutTitle) aboutTitle.classList.add('portfolio-about-title');
+    }
+    const hero = document.querySelector('header, #hero, [data-hero], main > section:first-of-type');
+    if (hero) {
+        const heroTitle = hero.querySelector('h1, h2');
+        if (heroTitle) heroTitle.classList.add('portfolio-hero-title');
+        const heroText = hero.querySelector('p');
+        if (heroText) heroText.classList.add('portfolio-hero-copy');
+        const heroActions = Array.from(hero.querySelectorAll('div')).find((element) => Array.from(element.children).some((child) => child.matches('button, a')));
+        if (heroActions) heroActions.classList.add('portfolio-hero-actions');
+    }
     if (!section) return;
     const grid = Array.from(section.querySelectorAll('div')).find((element) => element.classList.contains('grid'));
     const cards = grid ? Array.from(grid.children).filter((element) => element.nodeType === 1) : [];
