@@ -209,7 +209,7 @@ def add_chatbot_widget(html: str) -> str:
 </script>
 """
 
-        return re.sub(r"</body\\s*>", chatbot_html + "</body>", html, count=1, flags=re.I)
+        return re.sub(r"</body\s*>", chatbot_html + "</body>", html, count=1, flags=re.I)
 
 
 def ask_ai_for_html(system_instruction: str, user_instruction: str) -> str:
@@ -217,6 +217,7 @@ def ask_ai_for_html(system_instruction: str, user_instruction: str) -> str:
     response = client.chat.completions.create(
         model=OPENAI_MODEL,
         temperature=0.35,
+        timeout=60,
         messages=[
             {"role": "system", "content": system_instruction},
             {"role": "user", "content": user_instruction},
