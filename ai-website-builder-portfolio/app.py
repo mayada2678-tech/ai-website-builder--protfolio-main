@@ -153,11 +153,10 @@ def add_chatbot_widget(html: str) -> str:
 @keyframes portfolioChatEnter { from { opacity:0; transform:translateY(18px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
 @keyframes portfolioChatPulse { 0%,100% { box-shadow:0 0 0 0 rgba(45,212,191,.38); } 50% { box-shadow:0 0 0 5px rgba(45,212,191,0); } }
 #portfolio-chatbot { animation:portfolioChatEnter .55s ease-out both; }
-#portfolio-chatbot.chat-collapsed { width:64px !important; }
-#portfolio-chatbot.chat-collapsed #portfolio-chat-toggle { width:64px; height:64px; padding:0; border-radius:50%; justify-content:center; }
-#portfolio-chatbot.chat-collapsed .portfolio-chat-glow, #portfolio-chatbot.chat-collapsed .portfolio-chat-copy, #portfolio-chatbot.chat-collapsed .portfolio-chat-control { display:none !important; }
+#portfolio-chatbot.chat-collapsed { width:min(280px,calc(100vw - 28px)) !important; }
+#portfolio-chatbot.chat-collapsed #portfolio-chat-toggle { width:100%;min-height:64px;padding:10px 12px;border-radius:8px;background:#0b172a; }
+#portfolio-chatbot.chat-collapsed .portfolio-chat-glow, #portfolio-chatbot.chat-collapsed .portfolio-chat-control { display:none !important; }
 #portfolio-chat-tooltip { display:none; }
-#portfolio-chatbot.chat-collapsed #portfolio-chat-tooltip { display:block;position:absolute;right:72px;bottom:15px;padding:7px 10px;background:#0b172a;color:#fff;border-radius:5px;box-shadow:0 8px 20px rgba(2,6,23,.2);font-size:12px;font-weight:700;white-space:nowrap; }
 #portfolio-chatbot button:focus-visible, #portfolio-chatbot input:focus-visible { outline:3px solid #fbbf24; outline-offset:2px; }
 #portfolio-chatbot button:hover { filter:brightness(1.06); }
 </style>
@@ -168,7 +167,6 @@ def add_chatbot_widget(html: str) -> str:
         <span class="portfolio-chat-copy" style="position:relative;flex:1;"><span style="display:block;font-weight:800;font-size:15px;line-height:1.2;">Portfolio-Assistent</span><span style="display:block;margin-top:3px;color:#fef3c7;font-size:11px;line-height:1.25;">Hier kannst du gerne Fragen stellen</span><span style="display:flex;align-items:center;gap:5px;margin-top:4px;color:#cbd5e1;font-size:11px;line-height:1.2;"><i aria-hidden="true" style="display:block;width:7px;height:7px;border-radius:50%;background:#2dd4bf;animation:portfolioChatPulse 2s ease-in-out infinite;"></i>Mayada Esmail · online</span></span>
         <span class="portfolio-chat-control" aria-hidden="true" style="position:relative;color:#fbbf24;font-size:20px;line-height:1;">−</span>
     </button>
-    <span id="portfolio-chat-tooltip">Hier kannst du gerne fragen</span>
     <section id="portfolio-chat-panel" style="margin-top:7px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 20px 48px rgba(15,23,42,.24);overflow:hidden;">
         <div style="padding:15px;background:#f8fafc;border-bottom:1px solid #e2e8f0;color:#334155;font-size:13px;line-height:1.5;"><span style="display:block;margin-bottom:3px;color:#0f172a;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;">Ihr direkter Draht zu Mayada</span>Ich beantworte Fragen zu Erfahrung, Kompetenzen und Projekten auf Basis ihres Lebenslaufs.</div>
         <div id="portfolio-chat-messages" aria-live="polite" style="height:230px;overflow-y:auto;padding:15px;background:#fff;color:#1e293b;font-size:14px;line-height:1.55;"><p style="max-width:90%;margin:0;padding:11px 12px;background:#eefbf8;border-left:3px solid #0f766e;border-radius:0 7px 7px 0;">Willkommen. Wobei kann ich Sie zu Mayadas Profil unterstützen?</p></div>
