@@ -150,8 +150,8 @@ def add_chatbot_widget(html: str) -> str:
 
         chatbot_html = """
 <aside id="portfolio-chatbot" style="position:fixed;right:20px;bottom:20px;z-index:9999;width:min(360px,calc(100vw - 32px));font-family:Arial,sans-serif;">
-    <button id="portfolio-chat-toggle" type="button" aria-expanded="false" style="width:100%;padding:14px 16px;background:#2563eb;color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:600;text-align:left;">Fragen zu Mayadas Erfahrung</button>
-    <section id="portfolio-chat-panel" hidden style="margin-top:8px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 12px 30px rgba(15,23,42,.18);overflow:hidden;">
+    <button id="portfolio-chat-toggle" type="button" aria-expanded="true" style="width:100%;padding:14px 16px;background:#2563eb;color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:600;text-align:left;">Fragen zu Mayadas Erfahrung</button>
+    <section id="portfolio-chat-panel" style="margin-top:8px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 12px 30px rgba(15,23,42,.18);overflow:hidden;">
         <div id="portfolio-chat-messages" aria-live="polite" style="height:260px;overflow-y:auto;padding:14px;color:#1e293b;font-size:14px;line-height:1.45;"><p style="margin:0;">Gerne beantworte ich Fragen zu Mayadas Erfahrung, Projekten und Kompetenzen.</p></div>
         <form id="portfolio-chat-form" style="display:flex;gap:8px;padding:12px;border-top:1px solid #e2e8f0;">
             <input id="portfolio-chat-input" type="text" aria-label="Frage an den Portfolio-Assistenten" placeholder="Ihre Frage..." required style="min-width:0;flex:1;padding:10px;border:1px solid #94a3b8;border-radius:6px;">
