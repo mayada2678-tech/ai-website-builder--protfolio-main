@@ -156,6 +156,7 @@ def add_project_interactions(html: str) -> str:
 @keyframes portfolioAboutTitleEnter { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
 @keyframes portfolioHeroEnter { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
 @keyframes portfolioHeroFloat { 0%,100% { translate:0 0; } 50% { translate:0 -7px; } }
+@keyframes portfolioCtaShimmer { 0%,100% { box-shadow:0 4px 15px rgba(37,99,235,.2); } 50% { box-shadow:0 8px 24px rgba(124,58,237,.34); } }
 @keyframes portfolioAboutImageFloat { 0%,100% { transform:translateY(0) scale(1); } 50% { transform:translateY(-8px) scale(1.018); } }
 .portfolio-project-card { position:relative; isolation:isolate; border:1px solid rgba(30,41,59,.28) !important; transform-style:preserve-3d; transition:transform .4s ease, border-color .4s ease, box-shadow .4s ease !important; will-change:transform; }
 .portfolio-project-card::before { content:''; position:absolute; inset:-1px; z-index:-1; border-radius:inherit; opacity:0; padding:1px; background:linear-gradient(125deg,#2563eb,#7c3aed,#22d3ee); transition:opacity .4s ease; -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; }
@@ -174,7 +175,10 @@ def add_project_interactions(html: str) -> str:
 .portfolio-hero-title { animation:portfolioHeroEnter .8s cubic-bezier(.2,.75,.25,1) both,portfolioHeroFloat 5s ease-in-out .9s infinite; }
 .portfolio-hero-copy { animation:portfolioHeroEnter .7s .18s cubic-bezier(.2,.75,.25,1) both; }
 .portfolio-hero-actions { animation:portfolioHeroEnter .7s .36s cubic-bezier(.2,.75,.25,1) both; }
-@media (prefers-reduced-motion:reduce) { .portfolio-project-card, .portfolio-tech-badge, .portfolio-about-title, .portfolio-about-image, .portfolio-hero-title, .portfolio-hero-copy, .portfolio-hero-actions { animation:none !important; transition:none !important; } }
+.portfolio-hero-actions > button, .portfolio-hero-actions > a { transition:transform .25s ease,filter .25s ease,box-shadow .25s ease !important; will-change:transform; }
+.portfolio-hero-actions > button:first-child { animation:portfolioCtaShimmer 3s ease-in-out .9s infinite; }
+.portfolio-hero-actions > button:hover, .portfolio-hero-actions > a:hover { transform:translateY(-4px) scale(1.02); filter:brightness(1.08); }
+@media (prefers-reduced-motion:reduce) { .portfolio-project-card, .portfolio-tech-badge, .portfolio-about-title, .portfolio-about-image, .portfolio-hero-title, .portfolio-hero-copy, .portfolio-hero-actions, .portfolio-hero-actions > button:first-child { animation:none !important; transition:none !important; } }
 </style>
 <script>
 (() => {
