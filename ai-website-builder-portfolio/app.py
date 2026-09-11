@@ -158,6 +158,8 @@ def add_project_interactions(html: str) -> str:
 @keyframes portfolioHeroFloat { 0%,100% { translate:0 0; } 50% { translate:0 -7px; } }
 @keyframes portfolioCtaShimmer { 0%,100% { box-shadow:0 4px 15px rgba(37,99,235,.2); } 50% { box-shadow:0 8px 24px rgba(124,58,237,.34); } }
 @keyframes portfolioNavEnter { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+@keyframes portfolioExpertiseEnter { from { opacity:0; transform:translateY(26px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
+@keyframes portfolioExpertiseFloat { 0%,100% { translate:0 0; } 50% { translate:0 -5px; } }
 @keyframes portfolioAboutImageFloat { 0%,100% { transform:translateY(0) scale(1); } 50% { transform:translateY(-8px) scale(1.018); } }
 .portfolio-project-card { position:relative; isolation:isolate; border:1px solid rgba(30,41,59,.28) !important; transform-style:preserve-3d; transition:transform .4s ease, border-color .4s ease, box-shadow .4s ease !important; will-change:transform; }
 .portfolio-project-card::before { content:''; position:absolute; inset:-1px; z-index:-1; border-radius:inherit; opacity:0; padding:1px; background:linear-gradient(125deg,#2563eb,#7c3aed,#22d3ee); transition:opacity .4s ease; -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; }
@@ -183,7 +185,13 @@ def add_project_interactions(html: str) -> str:
 .portfolio-nav-link::after { content:''; position:absolute; left:0; right:0; bottom:-6px; height:2px; background:#fbbf24; border-radius:2px; transform:scaleX(0); transform-origin:center; transition:transform .25s ease; }
 .portfolio-nav-link:hover { color:#fbbf24 !important; transform:translateY(-2px); }
 .portfolio-nav-link:hover::after { transform:scaleX(1); }
-@media (prefers-reduced-motion:reduce) { .portfolio-project-card, .portfolio-tech-badge, .portfolio-about-title, .portfolio-about-image, .portfolio-hero-title, .portfolio-hero-copy, .portfolio-hero-actions, .portfolio-hero-actions > button:first-child, .portfolio-nav-link { animation:none !important; transition:none !important; } }
+.portfolio-expertise-card { position:relative; overflow:hidden; transition:transform .35s ease,border-color .35s ease,box-shadow .35s ease !important; animation:portfolioExpertiseEnter .7s cubic-bezier(.2,.75,.25,1) both,portfolioExpertiseFloat 5.5s ease-in-out .8s infinite; }
+.portfolio-expertise-card::before { content:''; position:absolute; inset:0; opacity:0; background:linear-gradient(130deg,rgba(56,189,248,.13),transparent 48%,rgba(124,58,237,.13)); transition:opacity .35s ease; pointer-events:none; }
+.portfolio-expertise-card:hover { transform:translateY(-7px) !important; border-color:#38bdf8 !important; box-shadow:0 14px 34px rgba(37,99,235,.17),0 8px 22px rgba(124,58,237,.12) !important; }
+.portfolio-expertise-card:hover::before { opacity:1; }
+.portfolio-expertise-card .portfolio-expertise-tag { display:inline-block; transition:transform .22s ease,color .22s ease,text-shadow .22s ease !important; }
+.portfolio-expertise-card .portfolio-expertise-tag:hover { transform:translateY(-2px) scale(1.06); color:#67e8f9 !important; text-shadow:0 0 16px rgba(103,232,249,.48); }
+@media (prefers-reduced-motion:reduce) { .portfolio-project-card, .portfolio-tech-badge, .portfolio-about-title, .portfolio-about-image, .portfolio-hero-title, .portfolio-hero-copy, .portfolio-hero-actions, .portfolio-hero-actions > button:first-child, .portfolio-nav-link, .portfolio-expertise-card { animation:none !important; transition:none !important; } }
 </style>
 <script>
 (() => {
@@ -209,6 +217,18 @@ def add_project_interactions(html: str) -> str:
             link.classList.add('portfolio-nav-link');
             link.style.animationDelay = `${index * 90}ms`;
         });
+    }
+    const expertiseTitle = Array.from(document.querySelectorAll('h1, h2, h3')).find((heading) => /core expertise|tech stack|kompetenzen|fähigkeiten/i.test(heading.textContent || ''));
+    if (expertiseTitle) {
+        const expertiseSection = expertiseTitle.closest('section') || expertiseTitle.parentElement?.parentElement;
+        const expertiseGrid = expertiseSection && Array.from(expertiseSection.querySelectorAll('div')).find((element) => element.classList.contains('grid'));
+        if (expertiseGrid) {
+            Array.from(expertiseGrid.children).forEach((card, cardIndex) => {
+                card.classList.add('portfolio-expertise-card');
+                card.style.animationDelay = `${cardIndex * 130}ms,${.8 + cardIndex * .45}s`;
+                card.querySelectorAll('span, a, small, li').forEach((tag) => tag.classList.add('portfolio-expertise-tag'));
+            });
+        }
     }
     if (!section) return;
     const grid = Array.from(section.querySelectorAll('div')).find((element) => element.classList.contains('grid'));
