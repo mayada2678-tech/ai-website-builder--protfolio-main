@@ -149,13 +149,27 @@ def add_chatbot_widget(html: str) -> str:
                 return html
 
         chatbot_html = """
-<aside id="portfolio-chatbot" style="position:fixed;right:20px;bottom:20px;z-index:9999;width:min(360px,calc(100vw - 32px));font-family:Arial,sans-serif;">
-    <button id="portfolio-chat-toggle" type="button" aria-expanded="true" style="width:100%;padding:14px 16px;background:#2563eb;color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:600;text-align:left;">Fragen zu Mayadas Erfahrung</button>
-    <section id="portfolio-chat-panel" style="margin-top:8px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 12px 30px rgba(15,23,42,.18);overflow:hidden;">
-        <div id="portfolio-chat-messages" aria-live="polite" style="height:260px;overflow-y:auto;padding:14px;color:#1e293b;font-size:14px;line-height:1.45;"><p style="margin:0;">Gerne beantworte ich Fragen zu Mayadas Erfahrung, Projekten und Kompetenzen.</p></div>
-        <form id="portfolio-chat-form" style="display:flex;gap:8px;padding:12px;border-top:1px solid #e2e8f0;">
-            <input id="portfolio-chat-input" type="text" aria-label="Frage an den Portfolio-Assistenten" placeholder="Ihre Frage..." required style="min-width:0;flex:1;padding:10px;border:1px solid #94a3b8;border-radius:6px;">
-            <button type="submit" style="padding:10px 14px;background:#1e293b;color:#fff;border:0;border-radius:6px;cursor:pointer;">Senden</button>
+<style>
+@keyframes portfolioChatEnter { from { opacity:0; transform:translateY(18px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
+@keyframes portfolioChatPulse { 0%,100% { box-shadow:0 0 0 0 rgba(45,212,191,.38); } 50% { box-shadow:0 0 0 5px rgba(45,212,191,0); } }
+#portfolio-chatbot { animation:portfolioChatEnter .55s ease-out both; }
+#portfolio-chatbot button:focus-visible, #portfolio-chatbot input:focus-visible { outline:3px solid #fbbf24; outline-offset:2px; }
+#portfolio-chatbot button:hover { filter:brightness(1.06); }
+</style>
+<aside id="portfolio-chatbot" style="position:fixed;right:20px;bottom:20px;z-index:9999;width:min(390px,calc(100vw - 28px));font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:0;">
+    <button id="portfolio-chat-toggle" type="button" aria-expanded="true" style="position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:14px 15px;background:#0b172a;color:#fff;border:1px solid #1e3a5f;border-radius:8px;cursor:pointer;text-align:left;box-shadow:0 18px 42px rgba(2,6,23,.32);overflow:hidden;">
+        <span aria-hidden="true" style="position:absolute;inset:0 0 0 auto;width:34%;background:linear-gradient(120deg,transparent,rgba(45,212,191,.14));"></span>
+        <span style="position:relative;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#fbbf24;color:#422006;font-weight:850;font-size:13px;box-shadow:inset 0 0 0 3px rgba(255,255,255,.18);">ME</span>
+        <span style="position:relative;flex:1;"><span style="display:block;font-weight:800;font-size:15px;line-height:1.2;">Portfolio-Assistent</span><span style="display:flex;align-items:center;gap:5px;margin-top:4px;color:#cbd5e1;font-size:11px;line-height:1.2;"><i aria-hidden="true" style="display:block;width:7px;height:7px;border-radius:50%;background:#2dd4bf;animation:portfolioChatPulse 2s ease-in-out infinite;"></i>Mayada Esmail · online</span></span>
+        <span aria-hidden="true" style="position:relative;color:#fbbf24;font-size:20px;line-height:1;">−</span>
+    </button>
+    <section id="portfolio-chat-panel" style="margin-top:7px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 20px 48px rgba(15,23,42,.24);overflow:hidden;">
+        <div style="padding:15px;background:#f8fafc;border-bottom:1px solid #e2e8f0;color:#334155;font-size:13px;line-height:1.5;"><span style="display:block;margin-bottom:3px;color:#0f172a;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;">Ihr direkter Draht zu Mayada</span>Ich beantworte Fragen zu Erfahrung, Kompetenzen und Projekten auf Basis ihres Lebenslaufs.</div>
+        <div id="portfolio-chat-messages" aria-live="polite" style="height:230px;overflow-y:auto;padding:15px;background:#fff;color:#1e293b;font-size:14px;line-height:1.55;"><p style="max-width:90%;margin:0;padding:11px 12px;background:#eefbf8;border-left:3px solid #0f766e;border-radius:0 7px 7px 0;">Willkommen. Wobei kann ich Sie zu Mayadas Profil unterstützen?</p></div>
+        <div id="portfolio-chat-suggestions" style="display:flex;flex-wrap:wrap;gap:6px;padding:0 13px 13px;background:#fff;"><button type="button" data-question="Welche Kompetenzen bringt Mayada mit?" style="padding:6px 8px;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:5px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Kompetenzen</button><button type="button" data-question="Welche Projekterfahrung hat Mayada?" style="padding:6px 8px;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:5px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Projekterfahrung</button><button type="button" data-question="Ist Mayada für mein Projekt geeignet?" style="padding:6px 8px;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:5px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Projektanfrage</button></div>
+        <form id="portfolio-chat-form" style="display:flex;gap:8px;padding:12px;border-top:1px solid #e2e8f0;background:#fff;">
+            <input id="portfolio-chat-input" type="text" aria-label="Frage an den Portfolio-Assistenten" placeholder="Ihre Frage eingeben..." required style="min-width:0;flex:1;padding:10px 11px;color:#0f172a;background:#fff;border:1px solid #94a3b8;border-radius:6px;font:inherit;font-size:14px;outline-offset:2px;">
+            <button id="portfolio-chat-submit" type="submit" aria-label="Frage senden" style="padding:10px 14px;background:#0f766e;color:#fff;border:0;border-radius:6px;cursor:pointer;font:inherit;font-size:13px;font-weight:800;box-shadow:0 4px 10px rgba(15,118,110,.22);">Senden</button>
         </form>
     </section>
 </aside>
@@ -165,11 +179,12 @@ def add_chatbot_widget(html: str) -> str:
     const panel = document.getElementById('portfolio-chat-panel');
     const form = document.getElementById('portfolio-chat-form');
     const input = document.getElementById('portfolio-chat-input');
+    const submit = document.getElementById('portfolio-chat-submit');
     const messages = document.getElementById('portfolio-chat-messages');
     const history = [];
-    const addMessage = (text, label) => {
+    const addMessage = (text, label, isUser = false) => {
         const message = document.createElement('p');
-        message.style.margin = '0 0 10px';
+        message.style.cssText = 'max-width:90%;margin:0 0 10px;padding:10px 11px;border-radius:7px;' + (isUser ? 'margin-left:auto;background:#10213d;color:#fff;' : 'background:#f1f5f9;color:#1e293b;');
         message.innerHTML = '<strong>' + label + ':</strong> ';
         message.append(document.createTextNode(text));
         messages.append(message);
@@ -180,30 +195,52 @@ def add_chatbot_widget(html: str) -> str:
         toggle.setAttribute('aria-expanded', String(!panel.hidden));
         if (!panel.hidden) input.focus();
     });
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const question = input.value.trim();
+    const sendQuestion = async (question) => {
         if (!question) return;
-        addMessage(question, 'Sie');
+        addMessage(question, 'Sie', true);
         history.push({role: 'user', content: question});
         input.value = '';
         input.disabled = true;
+        submit.disabled = true;
+        submit.textContent = 'Sendet...';
+        const typing = document.createElement('p');
+        typing.id = 'portfolio-chat-typing';
+        typing.textContent = 'Assistent schreibt...';
+        typing.style.cssText = 'margin:0 0 10px;color:#64748b;font-size:13px;font-style:italic;';
+        messages.append(typing);
+        messages.scrollTop = messages.scrollHeight;
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({question, history: history.slice(-6)})
             });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Der Assistent ist momentan nicht erreichbar.');
+            const contentType = response.headers.get('content-type') || '';
+            const data = contentType.includes('application/json') ? await response.json() : {};
+            if (!response.ok) {
+                const message = response.status === 404 || response.status === 405
+                    ? 'Der Assistent wird nach der Veröffentlichung auf Vercel aktiv.'
+                    : (data.error || 'Der Assistent ist momentan nicht erreichbar.');
+                throw new Error(message);
+            }
             addMessage(data.answer, 'Assistent');
             history.push({role: 'assistant', content: data.answer});
         } catch (error) {
             addMessage(error.message, 'Hinweis');
         } finally {
+            typing.remove();
             input.disabled = false;
+            submit.disabled = false;
+            submit.textContent = 'Senden';
             input.focus();
         }
+    };
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await sendQuestion(input.value.trim());
+    });
+    document.querySelectorAll('#portfolio-chat-suggestions [data-question]').forEach((button) => {
+        button.addEventListener('click', () => sendQuestion(button.dataset.question));
     });
 })();
 </script>
