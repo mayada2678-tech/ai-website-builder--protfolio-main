@@ -160,6 +160,7 @@ def add_project_interactions(html: str) -> str:
 @keyframes portfolioNavEnter { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
 @keyframes portfolioExpertiseEnter { from { opacity:0; transform:translateY(26px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
 @keyframes portfolioExpertiseFloat { 0%,100% { translate:0 0; } 50% { translate:0 -5px; } }
+@keyframes portfolioContactEnter { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
 @keyframes portfolioAboutImageFloat { 0%,100% { transform:translateY(0) scale(1); } 50% { transform:translateY(-8px) scale(1.018); } }
 .portfolio-project-card { position:relative; isolation:isolate; border:1px solid rgba(30,41,59,.28) !important; transform-style:preserve-3d; transition:transform .4s ease, border-color .4s ease, box-shadow .4s ease !important; will-change:transform; }
 .portfolio-project-card::before { content:''; position:absolute; inset:-1px; z-index:-1; border-radius:inherit; opacity:0; padding:1px; background:linear-gradient(125deg,#2563eb,#7c3aed,#22d3ee); transition:opacity .4s ease; -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; }
@@ -191,7 +192,15 @@ def add_project_interactions(html: str) -> str:
 .portfolio-expertise-card:hover::before { opacity:1; }
 .portfolio-expertise-card .portfolio-expertise-tag { display:inline-block; transition:transform .22s ease,color .22s ease,text-shadow .22s ease !important; }
 .portfolio-expertise-card .portfolio-expertise-tag:hover { transform:translateY(-2px) scale(1.06); color:#67e8f9 !important; text-shadow:0 0 16px rgba(103,232,249,.48); }
-@media (prefers-reduced-motion:reduce) { .portfolio-project-card, .portfolio-tech-badge, .portfolio-about-title, .portfolio-about-image, .portfolio-hero-title, .portfolio-hero-copy, .portfolio-hero-actions, .portfolio-hero-actions > button:first-child, .portfolio-nav-link, .portfolio-expertise-card { animation:none !important; transition:none !important; } }
+.portfolio-contact-section { position:relative; }
+.portfolio-contact-section::before { content:''; position:absolute; top:0; left:50%; width:74px; height:3px; background:linear-gradient(90deg,#0f766e,#38bdf8); border-radius:2px; transform:translateX(-50%); }
+.portfolio-contact-title { animation:portfolioContactEnter .75s cubic-bezier(.2,.75,.25,1) both; }
+.portfolio-contact-form { animation:portfolioContactEnter .75s .18s cubic-bezier(.2,.75,.25,1) both; }
+.portfolio-contact-form input, .portfolio-contact-form textarea { transition:border-color .25s ease,box-shadow .25s ease,transform .25s ease !important; }
+.portfolio-contact-form input:focus, .portfolio-contact-form textarea:focus { border-color:#38bdf8 !important; box-shadow:0 0 0 4px rgba(56,189,248,.15); transform:translateY(-1px); outline:none; }
+.portfolio-contact-form button[type="submit"] { transition:transform .25s ease,filter .25s ease,box-shadow .25s ease !important; box-shadow:0 7px 18px rgba(15,118,110,.22); }
+.portfolio-contact-form button[type="submit"]:hover { transform:translateY(-3px); filter:brightness(1.08); box-shadow:0 12px 24px rgba(15,118,110,.3); }
+@media (prefers-reduced-motion:reduce) { .portfolio-project-card, .portfolio-tech-badge, .portfolio-about-title, .portfolio-about-image, .portfolio-hero-title, .portfolio-hero-copy, .portfolio-hero-actions, .portfolio-hero-actions > button:first-child, .portfolio-nav-link, .portfolio-expertise-card, .portfolio-contact-title, .portfolio-contact-form { animation:none !important; transition:none !important; } }
 </style>
 <script>
 (() => {
@@ -229,6 +238,14 @@ def add_project_interactions(html: str) -> str:
                 card.querySelectorAll('span, a, small, li').forEach((tag) => tag.classList.add('portfolio-expertise-tag'));
             });
         }
+    }
+    const contactSection = document.querySelector('#contact, #kontakt, [data-contact]');
+    if (contactSection) {
+        contactSection.classList.add('portfolio-contact-section');
+        const contactTitle = contactSection.querySelector('h1, h2, h3');
+        if (contactTitle) contactTitle.classList.add('portfolio-contact-title');
+        const contactForm = contactSection.querySelector('form');
+        if (contactForm) contactForm.classList.add('portfolio-contact-form');
     }
     if (!section) return;
     const grid = Array.from(section.querySelectorAll('div')).find((element) => element.classList.contains('grid'));
