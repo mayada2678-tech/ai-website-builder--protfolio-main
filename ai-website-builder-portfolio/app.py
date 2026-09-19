@@ -1093,7 +1093,7 @@ def ask_ai_for_html(system_instruction: str, user_instruction: str) -> str:
     response = client.chat.completions.create(
         model=OPENAI_MODEL,
         temperature=0.35,
-        timeout=60,
+        timeout=150,
         messages=[
             {"role": "system", "content": system_instruction},
             {"role": "user", "content": user_instruction},
