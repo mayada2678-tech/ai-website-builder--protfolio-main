@@ -801,8 +801,13 @@ def add_interview_widget(html: str) -> str:
 @keyframes interviewCaptionEnter { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 @keyframes interviewLivePulse { 0%,100% { box-shadow:0 0 0 0 rgba(45,212,191,.5); } 50% { box-shadow:0 0 0 4px rgba(45,212,191,0); } }
 @keyframes interviewSpin { to { transform:rotate(360deg); } }
+@keyframes interviewWave { 0%,60%,100% { transform:rotate(0deg); } 10% { transform:rotate(16deg); } 20% { transform:rotate(-10deg); } 30% { transform:rotate(16deg); } 40% { transform:rotate(-6deg); } 50% { transform:rotate(12deg); } }
 #interview-avatar-trigger { animation:interviewAvatarEnter .55s ease-out both,interviewAvatarFloat 5s ease-in-out .9s infinite; }
 #interview-avatar-trigger:hover { filter:brightness(1.08); transform:translateY(-2px); }
+.interview-wave-hand { display:inline-block; transform-origin:70% 70%; animation:interviewWave 2.4s ease-in-out infinite; }
+#interview-avatar-callout { position:fixed; left:20px; bottom:82px; z-index:9998; max-width:min(250px,calc(100vw - 40px)); padding:10px 14px; background:#0b1220; color:#f1f5f9; font-size:13px; font-weight:600; line-height:1.4; border-radius:14px; border:1px solid rgba(255,255,255,.14); box-shadow:0 16px 40px rgba(2,6,23,.4); opacity:0; transform:translateY(8px); pointer-events:none; transition:opacity .4s ease,transform .4s ease; }
+#interview-avatar-callout::after { content:''; position:absolute; left:22px; bottom:-6px; width:12px; height:12px; background:#0b1220; border-right:1px solid rgba(255,255,255,.14); border-bottom:1px solid rgba(255,255,255,.14); transform:rotate(45deg); }
+#interview-avatar-callout.interview-callout-visible { opacity:1; transform:translateY(0); }
 #interview-avatar-overlay { animation:interviewOverlayEnter .2s ease-out both; }
 #interview-avatar-panel { animation:interviewPanelEnter .25s ease-out both; }
 #interview-avatar-widget button:focus-visible, #interview-avatar-widget input:focus-visible { outline:3px solid #fbbf24; outline-offset:2px; }
@@ -818,9 +823,13 @@ def add_interview_widget(html: str) -> str:
 .interview-suggestion-chip:hover { border-color:#7c3aed; color:#fff; }
 </style>
 <div id="interview-avatar-widget" style="font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-    <button id="interview-avatar-trigger" type="button" style="position:fixed;left:20px;bottom:20px;z-index:9999;display:flex;align-items:center;gap:10px;padding:9px 18px 9px 9px;background:linear-gradient(to right,#2563eb,#7c3aed);color:#fff;font:inherit;font-weight:700;font-size:14px;border:none;border-radius:999px;cursor:pointer;box-shadow:0 12px 30px rgba(37,99,235,.35);max-width:min(320px,calc(100vw - 28px));text-align:left;">
-        <img src="interview_avatar.jpg" alt="" aria-hidden="true" style="flex-shrink:0;width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.7);">
-        <span>Simuliertes Vorstellungsgespräch</span>
+    <div id="interview-avatar-callout" role="status">Lass uns ein virtuelles Vorstellungsgespräch führen &#128075;</div>
+    <button id="interview-avatar-trigger" type="button" style="position:fixed;left:20px;bottom:20px;z-index:9999;display:flex;align-items:center;gap:10px;padding:8px 18px 8px 8px;background:linear-gradient(to right,#2563eb,#7c3aed);color:#fff;font:inherit;font-weight:700;font-size:14px;border:none;border-radius:999px;cursor:pointer;box-shadow:0 12px 30px rgba(37,99,235,.35);max-width:min(320px,calc(100vw - 28px));text-align:left;">
+        <span style="position:relative;flex-shrink:0;display:inline-block;width:36px;height:36px;">
+            <img src="interview_avatar.jpg" alt="" aria-hidden="true" style="width:100%;height:100%;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.7);display:block;">
+            <span class="interview-wave-hand" aria-hidden="true" style="position:absolute;bottom:-3px;right:-7px;font-size:15px;">&#128075;</span>
+        </span>
+        <span>Virtuelles Vorstellungsgespräch führen</span>
     </button>
 
     <div id="interview-avatar-overlay" hidden style="position:fixed;inset:0;z-index:10000;background:rgba(2,6,23,.72);display:flex;align-items:center;justify-content:center;padding:16px;">
@@ -866,6 +875,7 @@ def add_interview_widget(html: str) -> str:
 <script>
 (() => {
     const trigger = document.getElementById('interview-avatar-trigger');
+    const callout = document.getElementById('interview-avatar-callout');
     const overlay = document.getElementById('interview-avatar-overlay');
     const closeBtn = document.getElementById('interview-avatar-close');
     const form = document.getElementById('interview-avatar-form');
@@ -880,6 +890,7 @@ def add_interview_widget(html: str) -> str:
     const history = [];
     let opened = false;
     let voiceEnabled = true;
+    let greeted = false;
 
     const setCaptionLine = (element, text) => {
         element.classList.remove('interview-caption-line');
@@ -922,6 +933,21 @@ def add_interview_widget(html: str) -> str:
         utterance.onerror = () => document.dispatchEvent(new CustomEvent('interview-avatar-speak-end'));
         window.speechSynthesis.speak(utterance);
     };
+
+    const hideCallout = () => { if (callout) callout.classList.remove('interview-callout-visible'); };
+    const greetVoiceOnce = () => {
+        if (greeted) return;
+        greeted = true;
+        speak('Willkommen! Lass uns ein virtuelles Vorstellungsgespräch führen.');
+    };
+    if (callout) {
+        setTimeout(() => { if (!opened) callout.classList.add('interview-callout-visible'); }, 1800);
+        setTimeout(hideCallout, 9000);
+    }
+    ['click', 'keydown', 'touchstart', 'scroll'].forEach((eventName) => {
+        document.addEventListener(eventName, greetVoiceOnce, { once: true, passive: true });
+    });
+
     voice.addEventListener('click', () => {
         voiceEnabled = !voiceEnabled;
         voice.setAttribute('aria-pressed', String(voiceEnabled));
@@ -932,9 +958,11 @@ def add_interview_widget(html: str) -> str:
 
     const openChat = () => {
         overlay.hidden = false;
+        hideCallout();
         document.dispatchEvent(new CustomEvent('interview-avatar-activate'));
         if (!opened) {
             opened = true;
+            greeted = true;
             const greeting = 'Hallo, schön dass du hier bist! Frag mich gern alles zu meinem Werdegang, meinen Projekten oder meiner Motivation für AI Engineering.';
             showAnswer(greeting);
             speak(greeting);
