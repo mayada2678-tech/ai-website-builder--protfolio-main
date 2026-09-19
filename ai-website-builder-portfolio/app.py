@@ -498,7 +498,8 @@ def add_interview_widget(html: str) -> str:
 #interview-avatar-callout { position:fixed; right:20px; bottom:82px; z-index:9998; max-width:min(250px,calc(100vw - 40px)); padding:10px 14px; background:#0b1220; color:#f1f5f9; font-size:13px; font-weight:600; line-height:1.4; border-radius:14px; border:1px solid rgba(255,255,255,.14); box-shadow:0 16px 40px rgba(2,6,23,.4); opacity:0; transform:translateY(8px); pointer-events:none; transition:opacity .4s ease,transform .4s ease; }
 #interview-avatar-callout::after { content:''; position:absolute; right:22px; bottom:-6px; width:12px; height:12px; background:#0b1220; border-right:1px solid rgba(255,255,255,.14); border-bottom:1px solid rgba(255,255,255,.14); transform:rotate(45deg); }
 #interview-avatar-callout.interview-callout-visible { opacity:1; transform:translateY(0); }
-#interview-avatar-overlay { animation:interviewOverlayEnter .2s ease-out both; }
+#interview-avatar-overlay { display:none; }
+#interview-avatar-overlay:not([hidden]) { display:flex; animation:interviewOverlayEnter .2s ease-out both; }
 #interview-avatar-panel { animation:interviewPanelEnter .25s ease-out both; }
 #interview-avatar-widget button:focus-visible, #interview-avatar-widget input:focus-visible { outline:3px solid #fbbf24; outline-offset:2px; }
 .interview-live-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#2dd4bf; animation:interviewLivePulse 2s ease-in-out infinite; }
@@ -522,7 +523,7 @@ def add_interview_widget(html: str) -> str:
         <span>Virtuelles Vorstellungsgespräch führen</span>
     </button>
 
-    <div id="interview-avatar-overlay" hidden style="position:fixed;inset:0;z-index:10000;background:rgba(2,6,23,.72);display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div id="interview-avatar-overlay" hidden style="position:fixed;inset:0;z-index:10000;background:rgba(2,6,23,.72);align-items:center;justify-content:center;padding:16px;">
         <div id="interview-avatar-panel" style="width:100%;max-width:420px;height:min(720px,88vh);display:flex;flex-direction:column;background:#0b1220;border-radius:20px;box-shadow:0 24px 64px rgba(2,6,23,.55);overflow:hidden;">
 
             <div id="interview-avatar-stage" style="position:relative;flex:1;min-height:0;background:radial-gradient(circle at 50% 30%,#1e293b,#0b1220 72%);overflow:hidden;">
@@ -649,7 +650,6 @@ def add_interview_widget(html: str) -> str:
     const openChat = () => {
         overlay.hidden = false;
         hideCallout();
-        document.dispatchEvent(new CustomEvent('interview-avatar-activate'));
         if (!opened) {
             opened = true;
             greeted = true;
@@ -901,7 +901,7 @@ def add_interview_widget(html: str) -> str:
         }
     };
 
-    document.addEventListener('interview-avatar-activate', init);
+    init();
 })();
 </script>
 """
