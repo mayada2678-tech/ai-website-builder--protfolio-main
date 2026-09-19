@@ -955,15 +955,26 @@ def add_interview_widget(html: str) -> str:
         const failSafeTimer = setTimeout(hideLoading, 8000);
 
         try {
-            const [THREE, { GLTFLoader }] = await Promise.all([
+            const [THREE, { GLTFLoader }, { RoomEnvironment }] = await Promise.all([
                 import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js'),
                 import('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js'),
+                import('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js'),
             ]);
 
             const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
             renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1;
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(28, 1, 0.05, 100);
+
+            // Die Avaturn-Materialien sind größtenteils voll metallisch (PBR) und
+            // bleiben ohne Umgebungslicht (envMap) fast schwarz/unsichtbar –
+            // eine generierte Studio-Umgebung behebt das zuverlässig.
+            const pmremGenerator = new THREE.PMREMGenerator(renderer);
+            scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+            pmremGenerator.dispose();
 
             scene.add(new THREE.HemisphereLight(0xffffff, 0x8892b0, 1.15));
             const key = new THREE.DirectionalLight(0xffffff, 1.0);
