@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -853,7 +854,31 @@ def delete_published_website() -> None:
     st.session_state.deployment_id = ""
     st.session_state.published_html = ""
 
-    
+
+def upload_file_to_vercel(content: bytes) -> str:
+    """Lädt Datei-Inhalte einzeln zu Vercel hoch (umgeht das 10-MB-Limit der Deployment-API)."""
+    digest = hashlib.sha1(content).hexdigest()
+
+    try:
+        response = requests.post(
+            "https://api.vercel.com/v2/files",
+            headers={
+                "Authorization": f"Bearer {VERCEL_TOKEN}",
+                "Content-Length": str(len(content)),
+                "x-vercel-digest": digest,
+            },
+            data=content,
+            timeout=90,
+        )
+    except requests.RequestException as error:
+        raise ValueError(f"Vercel-Datei-Upload konnte nicht erreicht werden: {error}") from error
+
+    if response.status_code not in (200, 201):
+        raise ValueError(f"Vercel-Datei-Upload HTTP {response.status_code}: {response.text}")
+
+    return digest
+
+
 def publish_website() -> None:
     """Veröffentlicht den aktuellen HTML-Entwurf auf Vercel."""
     html = add_chatbot_widget(
@@ -861,21 +886,19 @@ def publish_website() -> None:
     )
     project_name = safe_project_name(st.session_state.project_name)
 
-    files = [
-        {"file": "index.html", "data": html},
-        {
-            "file": "api/chat.py",
-            "data": Path(__file__).with_name("api").joinpath("chat.py").read_text(
-                encoding="utf-8"
-            ),
-        },
-        {
-            "file": "api/requirements.txt",
-            "data": Path(__file__)
+    raw_files: list[tuple[str, bytes]] = [
+        ("index.html", html.encode("utf-8")),
+        (
+            "api/chat.py",
+            Path(__file__).with_name("api").joinpath("chat.py").read_bytes(),
+        ),
+        (
+            "api/requirements.txt",
+            Path(__file__)
             .with_name("api")
             .joinpath("requirements.txt")
-            .read_text(encoding="utf-8"),
-        },
+            .read_bytes(),
+        ),
     ]
 
     if not RESUME_FILE_PATH.is_file():
@@ -883,13 +906,7 @@ def publish_website() -> None:
             f"Die Lebenslauf-Datei '{RESUME_FILE_NAME}' wurde nicht gefunden."
         )
 
-    files.append(
-        {
-            "file": RESUME_FILE_NAME,
-            "data": base64.b64encode(RESUME_FILE_PATH.read_bytes()).decode("utf-8"),
-            "encoding": "base64",
-        }
-    )
+    raw_files.append((RESUME_FILE_NAME, RESUME_FILE_PATH.read_bytes()))
 
     certificate_paths = get_certificate_files()
     if not certificate_paths:
@@ -899,36 +916,31 @@ def publish_website() -> None:
 
     certificate_entries = []
     for index, certificate_path in enumerate(certificate_paths, start=1):
-        deploy_file_name = slugify_certificate_filename(certificate_path.stem, index)
+        deploy_file_name = f"zertifikate/{slugify_certificate_filename(certificate_path.stem, index)}"
         certificate_entries.append(
             {
-                "file": f"zertifikate/{deploy_file_name}",
+                "file": deploy_file_name,
                 "name": prettify_certificate_name(certificate_path.stem),
             }
         )
-        files.append(
-            {
-                "file": f"zertifikate/{deploy_file_name}",
-                "data": base64.b64encode(certificate_path.read_bytes()).decode("utf-8"),
-                "encoding": "base64",
-            }
-        )
+        raw_files.append((deploy_file_name, certificate_path.read_bytes()))
 
-    files.append(
-        {
-            "file": CERTIFICATE_VIEWER_FILE_NAME,
-            "data": build_certificate_viewer_html(certificate_entries),
-        }
+    raw_files.append(
+        (
+            CERTIFICATE_VIEWER_FILE_NAME,
+            build_certificate_viewer_html(certificate_entries).encode("utf-8"),
+        )
     )
 
     for file_name, asset in st.session_state.assets.items():
-        files.append(
-            {
-                "file": file_name,
-                "data": asset["base64"],
-                "encoding": "base64",
-            }
-        )
+        raw_files.append((file_name, base64.b64decode(asset["base64"])))
+
+    # Jede Datei wird einzeln zu Vercel hochgeladen und im Deployment nur per
+    # SHA1-Hash referenziert, da die Deployment-API selbst auf 10 MB begrenzt ist.
+    files = [
+        {"file": file_name, "sha": upload_file_to_vercel(content), "size": len(content)}
+        for file_name, content in raw_files
+    ]
 
     payload = {
         "name": project_name,
