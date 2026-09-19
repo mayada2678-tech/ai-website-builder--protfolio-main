@@ -491,12 +491,38 @@ def add_chatbot_widget(html: str) -> str:
         .replace(/`/g, '')
         .replace(/\*/g, '')
         .trim();
+    const prepareSpeechText = (text) => text
+        .replace(/^[ \t]*[-•][ \t]+/gm, '')
+        .replace(/^[ \t]*\d+[.)][ \t]+/gm, '')
+        .replace(/\n{2,}/g, '. ')
+        .replace(/\n/g, ', ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+    let preferredVoice = null;
+    const pickPreferredVoice = () => {
+        if (!('speechSynthesis' in window)) return null;
+        const voices = window.speechSynthesis.getVoices();
+        if (!voices.length) return null;
+        const germanVoices = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith('de'));
+        const pool = germanVoices.length ? germanVoices : voices;
+        const preferredNameHints = ['google', 'natural', 'online', 'katja', 'petra', 'female'];
+        const bestMatch = pool.find((v) => preferredNameHints.some((hint) => v.name.toLowerCase().includes(hint)));
+        return bestMatch || pool[0] || null;
+    };
+    if ('speechSynthesis' in window) {
+        preferredVoice = pickPreferredVoice();
+        window.speechSynthesis.addEventListener('voiceschanged', () => {
+            preferredVoice = pickPreferredVoice();
+        });
+    }
     const speak = (text) => {
         if (!voiceEnabled || !('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'de-DE';
+        const utterance = new SpeechSynthesisUtterance(prepareSpeechText(text));
+        utterance.lang = preferredVoice ? preferredVoice.lang : 'de-DE';
+        if (preferredVoice) utterance.voice = preferredVoice;
         utterance.rate = 1;
+        utterance.pitch = 1;
         window.speechSynthesis.speak(utterance);
     };
     const addMessage = (text, label, isUser = false) => {
@@ -572,28 +598,132 @@ def add_chatbot_widget(html: str) -> str:
         voice.style.background = voiceEnabled ? '#f8fafc' : '#e2e8f0';
         if (!voiceEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
     });
-    mic.addEventListener('click', () => {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            addMessage('Die Spracheingabe wird von diesem Browser nicht unterstützt. Bitte tippen Sie Ihre Frage ein.', 'Hinweis');
-            return;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let isRecording = false;
+    const setMicState = (state) => {
+        if (state === 'listening') {
+            mic.innerHTML = '&#9679;';
+            mic.style.background = '#fee2e2';
+            mic.style.color = '#b91c1c';
+            mic.title = 'Aufnahme läuft – zum Beenden klicken';
+        } else if (state === 'processing') {
+            mic.innerHTML = '...';
+            mic.style.background = '#f8fafc';
+            mic.style.color = '#0f766e';
+            mic.title = 'Sprache wird verarbeitet...';
+        } else {
+            mic.innerHTML = '&#127908;';
+            mic.style.background = '#f8fafc';
+            mic.style.color = '#0f766e';
+            mic.title = 'Frage sprechen';
         }
+    };
+    const startNativeRecognition = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
         recognition.lang = 'de-DE';
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
         mic.disabled = true;
-        mic.textContent = '...';
+        setMicState('listening');
         recognition.onresult = (event) => {
-            input.value = event.results[0][0].transcript;
-            form.requestSubmit();
+            const transcript = (event.results[0][0].transcript || '').trim();
+            if (transcript) {
+                input.value = transcript;
+                form.requestSubmit();
+            }
         };
-        recognition.onerror = () => addMessage('Die Spracheingabe konnte nicht gestartet werden. Bitte versuchen Sie es erneut.', 'Hinweis');
+        recognition.onerror = (event) => {
+            const message = event.error === 'not-allowed' || event.error === 'permission-denied'
+                ? 'Der Zugriff auf das Mikrofon wurde verweigert. Bitte erlauben Sie den Zugriff in den Browser-Einstellungen.'
+                : event.error === 'no-speech'
+                    ? 'Es wurde keine Sprache erkannt. Bitte versuchen Sie es erneut.'
+                    : 'Die Spracheingabe konnte nicht gestartet werden. Bitte versuchen Sie es erneut.';
+            addMessage(message, 'Hinweis');
+        };
         recognition.onend = () => {
             mic.disabled = false;
-            mic.innerHTML = '&#127908;';
+            setMicState('idle');
         };
         recognition.start();
+    };
+    const stopFallbackRecording = () => {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+    };
+    const startFallbackRecording = async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+            addMessage('Die Spracheingabe wird von diesem Browser nicht unterstützt. Bitte tippen Sie Ihre Frage ein.', 'Hinweis');
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioChunks = [];
+            const mimeType = (typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported('audio/webm'))
+                ? 'audio/webm'
+                : '';
+            mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+            isRecording = true;
+            setMicState('listening');
+            mediaRecorder.addEventListener('dataavailable', (event) => {
+                if (event.data && event.data.size > 0) audioChunks.push(event.data);
+            });
+            mediaRecorder.addEventListener('stop', async () => {
+                isRecording = false;
+                stream.getTracks().forEach((track) => track.stop());
+                setMicState('processing');
+                mic.disabled = true;
+                try {
+                    const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+                    if (blob.size < 1000) {
+                        throw new Error('Die Aufnahme war zu kurz. Bitte versuchen Sie es erneut.');
+                    }
+                    const response = await fetch('/api/transcribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': blob.type || 'audio/webm' },
+                        body: blob,
+                    });
+                    const contentType = response.headers.get('content-type') || '';
+                    const data = contentType.includes('application/json') ? await response.json() : {};
+                    if (!response.ok) {
+                        const message = response.status === 404 || response.status === 405
+                            ? 'Die Spracherkennung wird nach der Veröffentlichung auf Vercel aktiv.'
+                            : (data.error || 'Die Sprachaufnahme konnte nicht verarbeitet werden.');
+                        throw new Error(message);
+                    }
+                    const transcript = (data.text || '').trim();
+                    if (!transcript) {
+                        throw new Error('Es wurde keine Sprache erkannt. Bitte versuchen Sie es erneut.');
+                    }
+                    input.value = transcript;
+                    form.requestSubmit();
+                } catch (error) {
+                    addMessage(error.message, 'Hinweis');
+                } finally {
+                    mic.disabled = false;
+                    setMicState('idle');
+                }
+            });
+            mediaRecorder.start();
+            setTimeout(() => { if (isRecording) stopFallbackRecording(); }, 15000);
+        } catch (error) {
+            setMicState('idle');
+            addMessage('Der Zugriff auf das Mikrofon wurde verweigert oder ist nicht möglich.', 'Hinweis');
+        }
+    };
+    mic.addEventListener('click', () => {
+        if (isRecording) {
+            stopFallbackRecording();
+            return;
+        }
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            startNativeRecognition();
+        } else {
+            startFallbackRecording();
+        }
     });
 })();
 </script>
@@ -891,6 +1021,10 @@ def publish_website() -> None:
         (
             "api/chat.py",
             Path(__file__).with_name("api").joinpath("chat.py").read_bytes(),
+        ),
+        (
+            "api/transcribe.py",
+            Path(__file__).with_name("api").joinpath("transcribe.py").read_bytes(),
         ),
         (
             "api/requirements.txt",
