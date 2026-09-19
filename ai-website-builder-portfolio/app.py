@@ -434,7 +434,13 @@ section[id], [data-about], [data-projects], [data-milestones], [data-contact] { 
 </script>
 """
 
-        return re.sub(r"</body\s*>", interaction_html + "</body>", html, count=1, flags=re.I)
+        return re.sub(
+            r"</body\s*>",
+            lambda _match: interaction_html + "</body>",
+            html,
+            count=1,
+            flags=re.I,
+        )
 
 
 def add_chatbot_widget(html: str) -> str:
@@ -729,7 +735,13 @@ def add_chatbot_widget(html: str) -> str:
 </script>
 """
 
-        return re.sub(r"</body\s*>", chatbot_html + "</body>", html, count=1, flags=re.I)
+        return re.sub(
+            r"</body\s*>",
+            lambda _match: chatbot_html + "</body>",
+            html,
+            count=1,
+            flags=re.I,
+        )
 
 
 def ask_ai_for_html(system_instruction: str, user_instruction: str) -> str:
