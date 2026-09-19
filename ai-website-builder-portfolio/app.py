@@ -765,16 +765,35 @@ def add_interview_widget(html: str) -> str:
         preferredVoice = pickPreferredVoice();
         window.speechSynthesis.addEventListener('voiceschanged', () => { preferredVoice = pickPreferredVoice(); });
     }
+    const splitIntoSpeechChunks = (text) => text
+        .replace(/\*\*|__|`|\*/g, '')
+        .split(/\n+/)
+        .map((line) => line
+            .replace(/^[ \t]*[-•][ \t]*/, '')
+            .replace(/^[ \t]*\d+[.)][ \t]*/, '')
+            .trim())
+        .filter(Boolean)
+        .flatMap((line) => line.match(/[^.!?]+[.!?]*/g) || [line])
+        .map((chunk) => chunk.replace(/\s{2,}/g, ' ').trim())
+        .filter(Boolean);
     const speak = (text) => {
         if (!voiceEnabled || !('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text.replace(/\*\*|__|`|\*/g, ''));
-        utterance.lang = preferredVoice ? preferredVoice.lang : 'de-DE';
-        if (preferredVoice) utterance.voice = preferredVoice;
-        utterance.onstart = () => document.dispatchEvent(new CustomEvent('interview-avatar-speak-start'));
-        utterance.onend = () => document.dispatchEvent(new CustomEvent('interview-avatar-speak-end'));
-        utterance.onerror = () => document.dispatchEvent(new CustomEvent('interview-avatar-speak-end'));
-        window.speechSynthesis.speak(utterance);
+        const chunks = splitIntoSpeechChunks(text);
+        if (!chunks.length) return;
+        chunks.forEach((chunk, index) => {
+            const utterance = new SpeechSynthesisUtterance(chunk);
+            utterance.lang = preferredVoice ? preferredVoice.lang : 'de-DE';
+            if (preferredVoice) utterance.voice = preferredVoice;
+            if (index === 0) {
+                utterance.onstart = () => document.dispatchEvent(new CustomEvent('interview-avatar-speak-start'));
+            }
+            if (index === chunks.length - 1) {
+                utterance.onend = () => document.dispatchEvent(new CustomEvent('interview-avatar-speak-end'));
+                utterance.onerror = () => document.dispatchEvent(new CustomEvent('interview-avatar-speak-end'));
+            }
+            window.speechSynthesis.speak(utterance);
+        });
     };
 
     const hideCallout = () => { if (callout) callout.classList.remove('interview-callout-visible'); };
