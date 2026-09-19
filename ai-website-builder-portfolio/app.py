@@ -28,6 +28,7 @@ INTERVIEW_AVATAR_3D_FILE_NAME = "interview_avatar.glb"
 INTERVIEW_AVATAR_3D_FILE_PATH = Path(__file__).with_name(INTERVIEW_AVATAR_3D_FILE_NAME)
 CERTIFICATE_DIR = Path(__file__).with_name("zertifikate")
 CERTIFICATE_VIEWER_FILE_NAME = "zertifikate.html"
+TEST_PROJECT_RECIPIENT_EMAIL = "mayada2678@gmail.com"
 VERCEL_DEPLOYMENTS_URL = (
     "https://api.vercel.com/v13/deployments"
     "?skipAutoDetectionConfirmation=1"
@@ -42,6 +43,11 @@ except KeyError:
         "`vercel_token` in `.streamlit/secrets.toml`."
     )
     st.stop()
+
+# Optional: Für den "Testprojekt senden"-Button. Ohne diese Angaben läuft die
+# App weiter, aber der Upload-Button meldet beim Senden einen klaren Fehler.
+GMAIL_USER = st.secrets.get("gmail_user", "")
+GMAIL_APP_PASSWORD = st.secrets.get("gmail_app_password", "")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -478,16 +484,13 @@ section[id], [data-about], [data-projects], [data-milestones], [data-contact] { 
 
 
 def add_document_links_widget(html: str) -> str:
-    """Stellt sicher, dass Lebenslauf- und Zertifikate-Links immer sichtbar sind,
-    auch wenn die KI sie beim Bearbeiten aus dem Hero-Bereich entfernt hat."""
+    """Ergänzt Lebenslauf-/Zertifikate-Links (falls von der KI vergessen) sowie
+    den Button 'Schick uns dein Testprojekt' samt Upload-Formular."""
     if 'id="portfolio-document-links"' in html:
         return html
 
     has_resume_link = "lebenslauf_mayada_esmail.pdf" in html
     has_certificate_link = "zertifikate.html" in html
-
-    if has_resume_link and has_certificate_link:
-        return html
 
     link_style = (
         "padding:10px 16px;background:#1e293b;color:#f1f5f9;font-weight:600;"
@@ -505,10 +508,117 @@ def add_document_links_widget(html: str) -> str:
             f'<a href="./zertifikate.html" target="_blank" style="{link_style}">Zertifikate ansehen</a>'
         )
 
+    links.append(
+        '<button id="test-project-trigger" type="button" style="'
+        "padding:10px 16px;background:linear-gradient(to right,#2563eb,#7c3aed);"
+        "color:#fff;font-weight:700;font-size:13px;border:none;border-radius:8px;"
+        'cursor:pointer;box-shadow:0 8px 20px rgba(37,99,235,.35);text-align:left;">'
+        "Schick uns dein Testprojekt</button>"
+    )
+
     widget_html = f"""
 <div id="portfolio-document-links" style="position:fixed;left:20px;bottom:20px;z-index:9997;display:flex;flex-direction:column;gap:8px;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
     {''.join(links)}
 </div>
+
+<style>
+#test-project-overlay {{ display:none; }}
+#test-project-overlay:not([hidden]) {{ display:flex; }}
+#test-project-widget button:focus-visible, #test-project-widget input:focus-visible {{ outline:3px solid #fbbf24; outline-offset:2px; }}
+</style>
+<div id="test-project-widget">
+    <div id="test-project-overlay" hidden style="position:fixed;inset:0;z-index:10001;background:rgba(2,6,23,.72);align-items:center;justify-content:center;padding:16px;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+        <div id="test-project-panel" style="width:100%;max-width:420px;background:#0b1220;color:#f1f5f9;border-radius:16px;box-shadow:0 24px 64px rgba(2,6,23,.55);overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.1);">
+                <div style="font-weight:800;font-size:15px;">Testprojekt einsenden</div>
+                <button id="test-project-close" type="button" aria-label="Schließen" style="width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:transparent;color:#fff;font-size:16px;cursor:pointer;">&#10005;</button>
+            </div>
+            <form id="test-project-form" style="padding:18px;display:flex;flex-direction:column;gap:12px;">
+                <div id="test-project-fields" style="display:flex;flex-direction:column;gap:12px;">
+                    <label for="test-project-file" style="font-size:13px;color:#cbd5e1;">
+                        Lade deine Testprojekt-Datei hoch (z.&nbsp;B. ZIP, PDF, DOCX, max. 10&nbsp;MB) &ndash;
+                        sie wird automatisch an Mayada geschickt.
+                    </label>
+                    <input id="test-project-file" type="file" required style="color:#f1f5f9;font-size:13px;">
+                    <button id="test-project-submit" type="submit" style="padding:10px 16px;background:linear-gradient(to right,#2563eb,#7c3aed);color:#fff;font-weight:700;font-size:14px;border:none;border-radius:8px;cursor:pointer;">Senden</button>
+                </div>
+                <p id="test-project-status" style="font-size:13px;line-height:1.5;min-height:18px;margin:0;"></p>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+(() => {{
+    const trigger = document.getElementById('test-project-trigger');
+    const overlay = document.getElementById('test-project-overlay');
+    const closeBtn = document.getElementById('test-project-close');
+    const form = document.getElementById('test-project-form');
+    const fields = document.getElementById('test-project-fields');
+    const fileInput = document.getElementById('test-project-file');
+    const submitBtn = document.getElementById('test-project-submit');
+    const statusEl = document.getElementById('test-project-status');
+    if (!trigger || !overlay || !form) return;
+
+    const MAX_BYTES = 10 * 1024 * 1024;
+
+    const openModal = () => {{
+        overlay.hidden = false;
+        fields.hidden = false;
+        fileInput.value = '';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Senden';
+        statusEl.style.color = '';
+        statusEl.textContent = '';
+    }};
+    const closeModal = () => {{ overlay.hidden = true; }};
+
+    trigger.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', (event) => {{ if (event.target === overlay) closeModal(); }});
+
+    form.addEventListener('submit', async (event) => {{
+        event.preventDefault();
+        const file = fileInput.files[0];
+        if (!file) {{
+            statusEl.style.color = '#fca5a5';
+            statusEl.textContent = 'Bitte wähle zuerst eine Datei aus.';
+            return;
+        }}
+        if (file.size > MAX_BYTES) {{
+            statusEl.style.color = '#fca5a5';
+            statusEl.textContent = 'Die Datei ist zu groß (max. 10 MB).';
+            return;
+        }}
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Wird gesendet ...';
+        statusEl.style.color = '#cbd5e1';
+        statusEl.textContent = '';
+
+        try {{
+            const formData = new FormData();
+            formData.append('file', file, file.name);
+            const response = await fetch('/api/submit-project', {{ method: 'POST', body: formData }});
+            const contentType = response.headers.get('content-type') || '';
+            const data = contentType.includes('application/json') ? await response.json() : {{}};
+            if (!response.ok) {{
+                const message = response.status === 404 || response.status === 405
+                    ? 'Der Upload wird nach der Veröffentlichung auf Vercel aktiv.'
+                    : (data.error || 'Die Datei konnte nicht gesendet werden.');
+                throw new Error(message);
+            }}
+            fields.hidden = true;
+            statusEl.style.color = '#86efac';
+            statusEl.textContent = 'Vielen Dank. Dein Projekt wird in Kürze bearbeitet. Du bekommst die Ergebnisse per E-Mail.';
+        }} catch (error) {{
+            statusEl.style.color = '#fca5a5';
+            statusEl.textContent = error.message;
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Senden';
+        }}
+    }});
+}})();
+</script>
 """
 
     return re.sub(
@@ -1245,6 +1355,10 @@ def publish_website() -> None:
             Path(__file__).with_name("api").joinpath("transcribe.py").read_bytes(),
         ),
         (
+            "api/submit-project.py",
+            Path(__file__).with_name("api").joinpath("submit_project.py").read_bytes(),
+        ),
+        (
             "api/requirements.txt",
             Path(__file__)
             .with_name("api")
@@ -1309,10 +1423,15 @@ def publish_website() -> None:
         for file_name, content in raw_files
     ]
 
+    env_vars = {"OPENAI_API_KEY": OPENAI_API_KEY}
+    if GMAIL_USER and GMAIL_APP_PASSWORD:
+        env_vars["GMAIL_USER"] = GMAIL_USER
+        env_vars["GMAIL_APP_PASSWORD"] = GMAIL_APP_PASSWORD
+
     payload = {
         "name": project_name,
         "target": "production",
-        "env": {"OPENAI_API_KEY": OPENAI_API_KEY},
+        "env": env_vars,
         "files": files,
         "projectSettings": {
             "framework": None,
