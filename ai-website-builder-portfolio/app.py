@@ -1293,6 +1293,68 @@ def strip_injected_widgets(html: str) -> str:
     return html[:earliest_index] + html[tail_start:]
 
 
+def redownload_site_images(html: str, base_url: str) -> None:
+    """Lädt Bilder einer bestehenden Website erneut herunter und legt sie als
+    Assets ab, damit sie beim erneuten Veröffentlichen nicht verloren gehen –
+    Vercel übernimmt Dateien nicht automatisch aus einem früheren Deployment."""
+    known_system_files = {
+        RESUME_FILE_NAME,
+        CERTIFICATE_VIEWER_FILE_NAME,
+        INTERVIEW_AVATAR_FILE_NAME,
+        INTERVIEW_AVATAR_3D_FILE_NAME,
+        MUSTERANTWORTEN_FILE_NAME,
+        "index.html",
+    }
+
+    mime_types_by_extension = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+        ".svg": "image/svg+xml",
+    }
+
+    image_names = set()
+    for match in re.finditer(r'<img[^>]+src=["\']([^"\'>]+)["\']', html, flags=re.I):
+        src = match.group(1)
+        if src.startswith(("http://", "https://", "data:", "//")):
+            continue
+
+        name = src.lstrip("./")
+        if (
+            name in known_system_files
+            or name.startswith("zertifikate/")
+            or name.startswith("api/")
+        ):
+            continue
+
+        if Path(name).suffix.lower() in mime_types_by_extension:
+            image_names.add(name)
+
+    if not image_names:
+        return
+
+    base_url = base_url.rstrip("/") + "/"
+
+    for name in image_names:
+        try:
+            response = requests.get(base_url + name, timeout=20)
+        except requests.RequestException:
+            continue
+
+        if response.status_code != 200:
+            continue
+
+        mime_type = mime_types_by_extension.get(
+            Path(name).suffix.lower(), "application/octet-stream"
+        )
+        st.session_state.assets[name] = {
+            "base64": base64.b64encode(response.content).decode("utf-8"),
+            "mime_type": mime_type,
+        }
+
+
 def load_published_website(live_url: str) -> None:
     """Lädt eine öffentliche Website unverändert, ohne KI-Bearbeitung."""
     live_url = live_url.strip()
@@ -1325,6 +1387,7 @@ def load_published_website(live_url: str) -> None:
     html = require_complete_html(response.text)
 
     st.session_state.assets = {}
+    redownload_site_images(html, response.url)
     st.session_state.live_url = response.url
     st.session_state.deployment_url = response.url
 
