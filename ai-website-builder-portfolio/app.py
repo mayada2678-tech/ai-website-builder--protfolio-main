@@ -838,7 +838,7 @@ def add_interview_widget(html: str) -> str:
             <div id="interview-avatar-stage" style="position:relative;flex:1;min-height:0;background:radial-gradient(circle at 50% 30%,#1e293b,#0b1220 72%);overflow:hidden;">
                 <canvas id="interview-avatar-canvas" style="width:100%;height:100%;display:block;"></canvas>
 
-                <div style="position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                <div style="position:absolute;top:14px;left:14px;right:14px;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;">
                     <div style="display:flex;align-items:center;gap:7px;padding:6px 12px;background:rgba(15,23,42,.5);backdrop-filter:blur(6px);border-radius:999px;border:1px solid rgba(255,255,255,.12);">
                         <i class="interview-live-dot" aria-hidden="true"></i>
                         <span id="interview-avatar-status-text" style="font-size:12px;font-weight:700;color:#f1f5f9;white-space:nowrap;">Mayada Esmail</span>
@@ -846,12 +846,12 @@ def add_interview_widget(html: str) -> str:
                     <button id="interview-avatar-close" type="button" aria-label="Schließen" class="interview-glass-btn">&#10005;</button>
                 </div>
 
-                <div id="interview-avatar-loading" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(11,18,32,.55);">
+                <div id="interview-avatar-loading" style="position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(11,18,32,.55);pointer-events:none;">
                     <div class="interview-spinner" aria-hidden="true"></div>
                     <span style="font-size:12px;font-weight:700;color:#e2e8f0;">Avatar wird geladen …</span>
                 </div>
 
-                <div id="interview-avatar-captions" style="position:absolute;left:0;right:0;bottom:0;padding:34px 18px 16px;background:linear-gradient(to top, rgba(2,6,23,.95), rgba(2,6,23,0));display:flex;flex-direction:column;gap:6px;pointer-events:none;">
+                <div id="interview-avatar-captions" style="position:absolute;left:0;right:0;bottom:0;z-index:1;padding:34px 18px 16px;background:linear-gradient(to top, rgba(2,6,23,.95), rgba(2,6,23,0));display:flex;flex-direction:column;gap:6px;pointer-events:none;">
                     <div id="interview-avatar-question" style="font-size:12px;font-weight:700;letter-spacing:.02em;color:#94a3b8;min-height:15px;"></div>
                     <div id="interview-avatar-answer" style="font-size:15px;line-height:1.5;color:#f8fafc;font-weight:500;min-height:20px;"></div>
                 </div>
@@ -1103,10 +1103,7 @@ def add_interview_widget(html: str) -> str:
     document.addEventListener('interview-avatar-listen-end', () => { statusText.textContent = 'Mayada Esmail'; });
 })();
 </script>
-<script type="module">
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
-import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
-
+<script>
 (() => {
     const stage = document.getElementById('interview-avatar-stage');
     const canvas = document.getElementById('interview-avatar-canvas');
@@ -1114,88 +1111,104 @@ import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/
     if (!stage || !canvas || !loadingEl) return;
 
     let started = false;
+    const hideLoading = () => { loadingEl.style.display = 'none'; };
 
     const init = async () => {
         if (started) return;
         started = true;
 
-        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(28, 1, 0.05, 100);
-
-        scene.add(new THREE.HemisphereLight(0xffffff, 0x8892b0, 1.15));
-        const key = new THREE.DirectionalLight(0xffffff, 1.0);
-        key.position.set(1, 2, 2.5);
-        scene.add(key);
-
-        function resize() {
-            const w = stage.clientWidth, h = stage.clientHeight;
-            if (!w || !h) return;
-            renderer.setSize(w, h, false);
-            camera.aspect = w / h;
-            camera.updateProjectionMatrix();
-        }
-
-        let head = null, neck = null, spine = null, spine1 = null, spine2 = null;
-        let baseSpineY = 0;
+        // Absicherung: Egal was passiert (CDN blockiert, langsames Netz, Fehler),
+        // die Ladeanzeige verschwindet spätestens nach 8 Sekunden von selbst.
+        const failSafeTimer = setTimeout(hideLoading, 8000);
 
         try {
-            const loader = new GLTFLoader();
-            const gltf = await loader.loadAsync('interview_avatar.glb');
-            const avatarRoot = gltf.scene;
-            scene.add(avatarRoot);
+            const [THREE, { GLTFLoader }] = await Promise.all([
+                import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js'),
+                import('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js'),
+            ]);
 
-            head = avatarRoot.getObjectByName('Head');
-            neck = avatarRoot.getObjectByName('Neck');
-            spine = avatarRoot.getObjectByName('Spine');
-            spine1 = avatarRoot.getObjectByName('Spine1');
-            spine2 = avatarRoot.getObjectByName('Spine2');
-            if (spine) baseSpineY = spine.position.y;
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(28, 1, 0.05, 100);
 
-            const box = new THREE.Box3().setFromObject(avatarRoot);
-            const size = new THREE.Vector3();
-            box.getSize(size);
-            const center = new THREE.Vector3();
-            box.getCenter(center);
-            const headY = box.max.y - size.y * 0.14;
-            camera.position.set(center.x, headY, center.z + size.y * 0.5);
-            camera.lookAt(center.x, headY, center.z);
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x8892b0, 1.15));
+            const key = new THREE.DirectionalLight(0xffffff, 1.0);
+            key.position.set(1, 2, 2.5);
+            scene.add(key);
 
-            loadingEl.style.display = 'none';
-        } catch (err) {
-            loadingEl.style.display = 'none';
-            console.error('Interview-Avatar 3D:', err);
-        }
-
-        resize();
-        if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
-        window.addEventListener('resize', resize);
-
-        let speaking = false;
-        let listening = false;
-        document.addEventListener('interview-avatar-speak-start', () => { speaking = true; });
-        document.addEventListener('interview-avatar-speak-end', () => { speaking = false; });
-        document.addEventListener('interview-avatar-listen-start', () => { listening = true; });
-        document.addEventListener('interview-avatar-listen-end', () => { listening = false; });
-
-        const clock = new THREE.Clock();
-        function animate() {
-            requestAnimationFrame(animate);
-            const t = clock.getElapsedTime();
-
-            if (head) {
-                head.rotation.y = Math.sin(t * 0.6) * 0.06 + (listening ? Math.sin(t * 2) * 0.02 : 0);
-                head.rotation.x = Math.sin(t * 0.9) * 0.03 + (listening ? 0.05 : 0) + (speaking ? Math.sin(t * 9) * 0.025 : 0);
+            function resize() {
+                const w = stage.clientWidth, h = stage.clientHeight;
+                if (!w || !h) return;
+                renderer.setSize(w, h, false);
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
             }
-            if (neck) neck.rotation.y = Math.sin(t * 0.6 + 0.3) * 0.03;
-            if (spine2) spine2.rotation.x = Math.sin(t * 0.5) * 0.015 + (speaking ? Math.sin(t * 9 + 1) * 0.012 : 0);
-            if (spine1) spine1.rotation.y = Math.sin(t * 0.4) * 0.01;
-            if (spine) spine.position.y = baseSpineY + Math.sin(t * 1.2) * 0.004;
 
-            renderer.render(scene, camera);
+            let head = null, neck = null, spine = null, spine1 = null, spine2 = null;
+            let baseSpineY = 0;
+
+            try {
+                const loader = new GLTFLoader();
+                const gltf = await loader.loadAsync('interview_avatar.glb');
+                const avatarRoot = gltf.scene;
+                scene.add(avatarRoot);
+
+                head = avatarRoot.getObjectByName('Head');
+                neck = avatarRoot.getObjectByName('Neck');
+                spine = avatarRoot.getObjectByName('Spine');
+                spine1 = avatarRoot.getObjectByName('Spine1');
+                spine2 = avatarRoot.getObjectByName('Spine2');
+                if (spine) baseSpineY = spine.position.y;
+
+                const box = new THREE.Box3().setFromObject(avatarRoot);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                const center = new THREE.Vector3();
+                box.getCenter(center);
+                const headY = box.max.y - size.y * 0.14;
+                camera.position.set(center.x, headY, center.z + size.y * 0.5);
+                camera.lookAt(center.x, headY, center.z);
+            } catch (err) {
+                console.error('Interview-Avatar 3D (Modell):', err);
+            }
+
+            clearTimeout(failSafeTimer);
+            hideLoading();
+
+            resize();
+            if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
+            window.addEventListener('resize', resize);
+
+            let speaking = false;
+            let listening = false;
+            document.addEventListener('interview-avatar-speak-start', () => { speaking = true; });
+            document.addEventListener('interview-avatar-speak-end', () => { speaking = false; });
+            document.addEventListener('interview-avatar-listen-start', () => { listening = true; });
+            document.addEventListener('interview-avatar-listen-end', () => { listening = false; });
+
+            const clock = new THREE.Clock();
+            function animate() {
+                requestAnimationFrame(animate);
+                const t = clock.getElapsedTime();
+
+                if (head) {
+                    head.rotation.y = Math.sin(t * 0.6) * 0.06 + (listening ? Math.sin(t * 2) * 0.02 : 0);
+                    head.rotation.x = Math.sin(t * 0.9) * 0.03 + (listening ? 0.05 : 0) + (speaking ? Math.sin(t * 9) * 0.025 : 0);
+                }
+                if (neck) neck.rotation.y = Math.sin(t * 0.6 + 0.3) * 0.03;
+                if (spine2) spine2.rotation.x = Math.sin(t * 0.5) * 0.015 + (speaking ? Math.sin(t * 9 + 1) * 0.012 : 0);
+                if (spine1) spine1.rotation.y = Math.sin(t * 0.4) * 0.01;
+                if (spine) spine.position.y = baseSpineY + Math.sin(t * 1.2) * 0.004;
+
+                renderer.render(scene, camera);
+            }
+            animate();
+        } catch (err) {
+            clearTimeout(failSafeTimer);
+            hideLoading();
+            console.error('Interview-Avatar 3D (Bibliothek konnte nicht geladen werden):', err);
         }
-        animate();
     };
 
     document.addEventListener('interview-avatar-activate', init);
