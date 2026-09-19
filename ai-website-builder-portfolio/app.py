@@ -525,13 +525,16 @@ def add_chatbot_widget(html: str) -> str:
         .replace(/`/g, '')
         .replace(/\*/g, '')
         .trim();
-    const prepareSpeechText = (text) => text
-        .replace(/^[ \t]*[-•][ \t]+/gm, '')
-        .replace(/^[ \t]*\d+[.)][ \t]+/gm, '')
-        .replace(/\n{2,}/g, '. ')
-        .replace(/\n/g, ', ')
-        .replace(/\s{2,}/g, ' ')
-        .trim();
+    const splitIntoSpeechChunks = (text) => text
+        .split(/\n+/)
+        .map((line) => line
+            .replace(/^[ \t]*[-•][ \t]*/, '')
+            .replace(/^[ \t]*\d+[.)][ \t]*/, '')
+            .trim())
+        .filter(Boolean)
+        .flatMap((line) => line.match(/[^.!?]+[.!?]*/g) || [line])
+        .map((chunk) => chunk.replace(/\s{2,}/g, ' ').trim())
+        .filter(Boolean);
     let preferredVoice = null;
     const pickPreferredVoice = () => {
         if (!('speechSynthesis' in window)) return null;
@@ -539,9 +542,12 @@ def add_chatbot_widget(html: str) -> str:
         if (!voices.length) return null;
         const germanVoices = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith('de'));
         const pool = germanVoices.length ? germanVoices : voices;
-        const preferredNameHints = ['google', 'natural', 'online', 'katja', 'petra', 'female'];
-        const bestMatch = pool.find((v) => preferredNameHints.some((hint) => v.name.toLowerCase().includes(hint)));
-        return bestMatch || pool[0] || null;
+        const preferredNameHints = ['online (natural)', 'natural', 'google', 'online', 'katja', 'conrad', 'female'];
+        for (const hint of preferredNameHints) {
+            const match = pool.find((v) => v.name.toLowerCase().includes(hint));
+            if (match) return match;
+        }
+        return pool[0] || null;
     };
     if ('speechSynthesis' in window) {
         preferredVoice = pickPreferredVoice();
@@ -552,12 +558,15 @@ def add_chatbot_widget(html: str) -> str:
     const speak = (text) => {
         if (!voiceEnabled || !('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(prepareSpeechText(text));
-        utterance.lang = preferredVoice ? preferredVoice.lang : 'de-DE';
-        if (preferredVoice) utterance.voice = preferredVoice;
-        utterance.rate = 1;
-        utterance.pitch = 1;
-        window.speechSynthesis.speak(utterance);
+        const chunks = splitIntoSpeechChunks(text);
+        chunks.forEach((chunk) => {
+            const utterance = new SpeechSynthesisUtterance(chunk);
+            utterance.lang = preferredVoice ? preferredVoice.lang : 'de-DE';
+            if (preferredVoice) utterance.voice = preferredVoice;
+            utterance.rate = 1;
+            utterance.pitch = 1;
+            window.speechSynthesis.speak(utterance);
+        });
     };
     const addMessage = (text, label, isUser = false) => {
         const message = document.createElement('p');
