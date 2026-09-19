@@ -1259,6 +1259,40 @@ def is_vercel_login_page(response: requests.Response) -> bool:
     return any(marker in url or marker in content for marker in markers)
 
 
+def strip_injected_widgets(html: str) -> str:
+    """Entfernt automatisch eingefügte Widgets (Projekt-Animationen, Dokument-Links,
+    Testprojekt-Formular, Interview-Avatar, alter Chatbot) aus geladenem HTML.
+
+    Ohne diesen Schritt würde eine geladene Live-Website mitsamt Tausenden Zeilen
+    Widget-Code (u. a. das komplette Three.js-Avatar-Skript) als "generated_html"
+    gespeichert und bei jeder KI-Bearbeitung erneut mitgeschickt – das sprengt den
+    Prompt, lässt Anfragen an OpenAI timeouten und Änderungen fehlschlagen.
+    """
+    markers = [
+        '<style id="portfolio-project-interactions">',
+        '<div id="portfolio-document-links"',
+        '<div id="test-project-widget">',
+        '<div id="interview-avatar-widget"',
+        '<aside id="portfolio-chatbot"',
+    ]
+
+    earliest_index = None
+    for marker in markers:
+        index = html.find(marker)
+        if index != -1 and (earliest_index is None or index < earliest_index):
+            earliest_index = index
+
+    if earliest_index is None:
+        return html
+
+    closing_match = re.search(r"</body\s*>", html[earliest_index:], flags=re.I)
+    if not closing_match:
+        return html[:earliest_index]
+
+    tail_start = earliest_index + closing_match.start()
+    return html[:earliest_index] + html[tail_start:]
+
+
 def load_published_website(live_url: str) -> None:
     """Lädt eine öffentliche Website unverändert, ohne KI-Bearbeitung."""
     live_url = live_url.strip()
@@ -1297,7 +1331,10 @@ def load_published_website(live_url: str) -> None:
     # Projektname nicht automatisch aus einer Deployment-URL ableiten.
     # Der richtige Projektname wird im Feld „Vercel-Projektname“ eingegeben.
     st.session_state.published_html = html
-    st.session_state.pending_html = html
+    # Widgets (Interview-Avatar, Dokument-Links, ...) werden beim Bearbeiten/
+    # Veröffentlichen ohnehin automatisch neu eingefügt – sie dürfen nicht Teil
+    # des KI-bearbeitbaren HTML sein, sonst schlagen spätere KI-Bearbeitungen fehl.
+    st.session_state.pending_html = strip_injected_widgets(html)
 
     # Geladene fremde Seiten dürfen über die App nicht gelöscht werden.
     st.session_state.deployment_id = ""
