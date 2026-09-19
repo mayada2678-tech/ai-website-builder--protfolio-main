@@ -485,7 +485,7 @@ section[id], [data-about], [data-projects], [data-milestones], [data-contact] { 
 
 def add_document_links_widget(html: str) -> str:
     """Ergänzt Lebenslauf-/Zertifikate-Links (falls von der KI vergessen) sowie
-    den Button 'Schick uns dein Testprojekt' samt Upload-Formular."""
+    den Button 'Schicken Sie uns Ihr Testprojekt' samt Upload-Formular."""
     if 'id="portfolio-document-links"' in html:
         return html
 
@@ -513,7 +513,7 @@ def add_document_links_widget(html: str) -> str:
         "padding:10px 16px;background:linear-gradient(to right,#2563eb,#7c3aed);"
         "color:#fff;font-weight:700;font-size:13px;border:none;border-radius:8px;"
         'cursor:pointer;box-shadow:0 8px 20px rgba(37,99,235,.35);text-align:left;">'
-        "Schick uns dein Testprojekt</button>"
+        "Schicken Sie uns Ihr Testprojekt</button>"
     )
 
     widget_html = f"""
@@ -536,7 +536,7 @@ def add_document_links_widget(html: str) -> str:
             <form id="test-project-form" style="padding:18px;display:flex;flex-direction:column;gap:12px;">
                 <div id="test-project-fields" style="display:flex;flex-direction:column;gap:12px;">
                     <label for="test-project-file" style="font-size:13px;color:#cbd5e1;">
-                        Lade deine Testprojekt-Datei hoch (z.&nbsp;B. ZIP, PDF, DOCX, max. 10&nbsp;MB) &ndash;
+                        Laden Sie Ihre Testprojekt-Datei hoch (z.&nbsp;B. ZIP, PDF, DOCX, max. 10&nbsp;MB) &ndash;
                         sie wird automatisch an Mayada geschickt.
                     </label>
                     <input id="test-project-file" type="file" required style="color:#f1f5f9;font-size:13px;">
@@ -581,7 +581,7 @@ def add_document_links_widget(html: str) -> str:
         const file = fileInput.files[0];
         if (!file) {{
             statusEl.style.color = '#fca5a5';
-            statusEl.textContent = 'Bitte wähle zuerst eine Datei aus.';
+            statusEl.textContent = 'Bitte wählen Sie zuerst eine Datei aus.';
             return;
         }}
         if (file.size > MAX_BYTES) {{
@@ -609,7 +609,7 @@ def add_document_links_widget(html: str) -> str:
             }}
             fields.hidden = true;
             statusEl.style.color = '#86efac';
-            statusEl.textContent = 'Vielen Dank. Dein Projekt wird in Kürze bearbeitet. Du bekommst die Ergebnisse per E-Mail.';
+            statusEl.textContent = 'Vielen Dank. Ihr Projekt wird in Kürze bearbeitet. Sie bekommen die Ergebnisse per E-Mail.';
         }} catch (error) {{
             statusEl.style.color = '#fca5a5';
             statusEl.textContent = error.message;

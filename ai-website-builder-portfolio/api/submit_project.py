@@ -101,7 +101,7 @@ class handler(BaseHTTPRequestHandler):
             file_field = fields.get("file")
 
             if not isinstance(file_field, dict) or not file_field.get("content"):
-                self.send_json(400, {"error": "Bitte wähle zuerst eine Datei aus."})
+                self.send_json(400, {"error": "Bitte wählen Sie zuerst eine Datei aus."})
                 return
 
             send_project_email(
@@ -116,4 +116,4 @@ class handler(BaseHTTPRequestHandler):
         except (ValueError, TypeError):
             self.send_json(400, {"error": "Die Anfrage konnte nicht gelesen werden."})
         except Exception:
-            self.send_json(500, {"error": "Die Datei konnte nicht gesendet werden. Bitte versuche es erneut."})
+            self.send_json(500, {"error": "Die Datei konnte nicht gesendet werden. Bitte versuchen Sie es erneut."})
