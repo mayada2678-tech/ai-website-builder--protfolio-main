@@ -324,7 +324,7 @@ def create_preview_html(html: str) -> str:
     # Live-Server – ohne <base>-Tag würden relative Pfade in der Vorschau ins Leere laufen.
     preview_html = add_base_href(preview_html, st.session_state.live_url)
 
-    return add_interview_widget(add_project_interactions(preview_html))
+    return add_interview_widget(add_document_links_widget(add_project_interactions(preview_html)))
 
 
 def add_project_interactions(html: str) -> str:
@@ -477,6 +477,49 @@ section[id], [data-about], [data-projects], [data-milestones], [data-contact] { 
         )
 
 
+def add_document_links_widget(html: str) -> str:
+    """Stellt sicher, dass Lebenslauf- und Zertifikate-Links immer sichtbar sind,
+    auch wenn die KI sie beim Bearbeiten aus dem Hero-Bereich entfernt hat."""
+    if 'id="portfolio-document-links"' in html:
+        return html
+
+    has_resume_link = "lebenslauf_mayada_esmail.pdf" in html
+    has_certificate_link = "zertifikate.html" in html
+
+    if has_resume_link and has_certificate_link:
+        return html
+
+    link_style = (
+        "padding:10px 16px;background:#1e293b;color:#f1f5f9;font-weight:600;"
+        "font-size:13px;border:1px solid #334155;border-radius:8px;"
+        "text-decoration:none;display:inline-block;box-shadow:0 8px 20px rgba(2,6,23,.35);"
+    )
+
+    links = []
+    if not has_resume_link:
+        links.append(
+            f'<a href="./lebenslauf_mayada_esmail.pdf" target="_blank" style="{link_style}">Lebenslauf ansehen</a>'
+        )
+    if not has_certificate_link:
+        links.append(
+            f'<a href="./zertifikate.html" target="_blank" style="{link_style}">Zertifikate ansehen</a>'
+        )
+
+    widget_html = f"""
+<div id="portfolio-document-links" style="position:fixed;left:20px;bottom:20px;z-index:9997;display:flex;flex-direction:column;gap:8px;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    {''.join(links)}
+</div>
+"""
+
+    return re.sub(
+        r"</body\s*>",
+        lambda _match: widget_html + "</body>",
+        html,
+        count=1,
+        flags=re.I,
+    )
+
+
 def add_interview_widget(html: str) -> str:
         """Fügt den Button 'Simuliertes Vorstellungsgespräch' samt Interview-Avatar ein."""
         if 'id="interview-avatar-widget"' in html:
@@ -581,7 +624,6 @@ def add_interview_widget(html: str) -> str:
     const history = [];
     let opened = false;
     let voiceEnabled = true;
-    let greeted = false;
 
     const setCaptionLine = (element, text) => {
         element.classList.remove('interview-caption-line');
@@ -626,18 +668,10 @@ def add_interview_widget(html: str) -> str:
     };
 
     const hideCallout = () => { if (callout) callout.classList.remove('interview-callout-visible'); };
-    const greetVoiceOnce = () => {
-        if (greeted) return;
-        greeted = true;
-        speak('Willkommen! Lass uns ein virtuelles Vorstellungsgespräch führen.');
-    };
     if (callout) {
         setTimeout(() => { if (!opened) callout.classList.add('interview-callout-visible'); }, 1800);
         setTimeout(hideCallout, 9000);
     }
-    ['click', 'keydown', 'touchstart', 'scroll'].forEach((eventName) => {
-        document.addEventListener(eventName, greetVoiceOnce, { once: true, passive: true });
-    });
 
     voice.addEventListener('click', () => {
         voiceEnabled = !voiceEnabled;
@@ -652,7 +686,6 @@ def add_interview_widget(html: str) -> str:
         hideCallout();
         if (!opened) {
             opened = true;
-            greeted = true;
             const greeting = 'Hallo, schön dass du hier bist! Frag mich gern alles zu meinem Werdegang, meinen Projekten oder meiner Motivation für AI Engineering.';
             showAnswer(greeting);
             speak(greeting);
@@ -1195,7 +1228,9 @@ def upload_file_to_vercel(content: bytes) -> str:
 def publish_website() -> None:
     """Veröffentlicht den aktuellen HTML-Entwurf auf Vercel."""
     html = add_interview_widget(
-        add_project_interactions(require_complete_html(st.session_state.generated_html))
+        add_document_links_widget(
+            add_project_interactions(require_complete_html(st.session_state.generated_html))
+        )
     )
     project_name = safe_project_name(st.session_state.project_name)
 
