@@ -676,7 +676,7 @@ def add_interview_widget(html: str) -> str:
         <span>Virtuelles Vorstellungsgespräch führen</span>
     </button>
 
-    <div id="interview-avatar-overlay" hidden style="position:fixed;inset:0;z-index:10000;background:rgba(2,6,23,.72);align-items:center;justify-content:center;padding:16px;">
+    <div id="interview-avatar-overlay" hidden style="position:fixed;inset:0;z-index:10000;background:rgba(2,6,23,.55);align-items:flex-end;justify-content:flex-end;padding:20px;">
         <div id="interview-avatar-panel" style="width:100%;max-width:420px;height:min(720px,88vh);display:flex;flex-direction:column;background:#0b1220;border-radius:20px;box-shadow:0 24px 64px rgba(2,6,23,.55);overflow:hidden;">
 
             <div id="interview-avatar-stage" style="position:relative;flex:1;min-height:0;background:radial-gradient(circle at 50% 30%,#1e293b,#0b1220 72%);overflow:hidden;">
