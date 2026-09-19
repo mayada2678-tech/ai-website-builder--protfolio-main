@@ -282,6 +282,30 @@ render();
 """
 
 
+def add_base_href(html: str, base_url: str) -> str:
+    """Fügt ein <base>-Tag ein, damit relative Bild-/Datei-Pfade in der Vorschau
+    vom ursprünglichen Server geladen werden, statt in der Vorschau zu brechen."""
+    if not base_url or re.search(r"<base[\s>]", html, flags=re.I):
+        return html
+
+    if not base_url.endswith("/"):
+        base_url = f"{base_url}/"
+
+    base_tag = f'<base href="{base_url}">'
+
+    head_match = re.search(r"<head[^>]*>", html, flags=re.I)
+    if head_match:
+        insert_at = head_match.end()
+        return html[:insert_at] + base_tag + html[insert_at:]
+
+    html_match = re.search(r"<html[^>]*>", html, flags=re.I)
+    if html_match:
+        insert_at = html_match.end()
+        return html[:insert_at] + f"<head>{base_tag}</head>" + html[insert_at:]
+
+    return base_tag + html
+
+
 def create_preview_html(html: str) -> str:
     """Ersetzt lokale Bildnamen in der Vorschau durch eingebettete Data-URLs."""
     preview_html = html
@@ -289,6 +313,10 @@ def create_preview_html(html: str) -> str:
     for file_name, asset in st.session_state.assets.items():
         data_url = f"data:{asset['mime_type']};base64,{asset['base64']}"
         preview_html = preview_html.replace(file_name, data_url)
+
+    # Bei einer geladenen Original-Website liegen Bilder & Dateien nur auf dem
+    # Live-Server – ohne <base>-Tag würden relative Pfade in der Vorschau ins Leere laufen.
+    preview_html = add_base_href(preview_html, st.session_state.live_url)
 
     return add_chatbot_widget(add_project_interactions(preview_html))
 
