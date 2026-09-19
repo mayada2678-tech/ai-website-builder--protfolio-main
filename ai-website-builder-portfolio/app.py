@@ -1,4 +1,5 @@
 import base64
+import json
 import re
 from pathlib import Path
 from urllib.parse import urlparse
@@ -18,6 +19,8 @@ OPENAI_MODEL = "gpt-4o-mini"
 FORMSPREE_ENDPOINT = "https://formspree.io/f/mnpqnyvk"
 RESUME_FILE_NAME = "lebenslauf_mayada_esmail.pdf"
 RESUME_FILE_PATH = Path(__file__).with_name(RESUME_FILE_NAME)
+CERTIFICATE_DIR = Path(r"C:\Users\mayad\OneDrive\Desktop\Bewerbungen\zertifikat")
+CERTIFICATE_VIEWER_FILE_NAME = "zertifikate.html"
 VERCEL_DEPLOYMENTS_URL = (
     "https://api.vercel.com/v13/deployments"
     "?skipAutoDetectionConfirmation=1"
@@ -130,6 +133,109 @@ def save_uploaded_image(uploaded_file, section_name: str) -> str:
     }
 
     return file_name
+
+
+def get_certificate_files() -> list[Path]:
+    """Listet alle Zertifikats-PDFs aus dem konfigurierten Ordner auf."""
+    if not CERTIFICATE_DIR.is_dir():
+        return []
+
+    return sorted(
+        (path for path in CERTIFICATE_DIR.iterdir() if path.is_file() and path.suffix.lower() == ".pdf"),
+        key=lambda path: path.name.lower(),
+    )
+
+
+def slugify_certificate_filename(stem: str, index: int) -> str:
+    """Erstellt einen sicheren Dateinamen für das Deployment."""
+    slug = re.sub(r"[^a-z0-9]+", "-", stem.lower()).strip("-")
+    return f"{index:02d}-{slug or 'zertifikat'}.pdf"
+
+
+def prettify_certificate_name(stem: str) -> str:
+    """Erstellt einen lesbaren Anzeigenamen aus dem Dateinamen."""
+    return re.sub(r"[_-]+", " ", stem).strip()
+
+
+def build_certificate_viewer_html(certificates: list[dict]) -> str:
+    """Erstellt eine eigenständige Seite zum Durchblättern aller Zertifikate."""
+    certificates_json = json.dumps(certificates, ensure_ascii=False)
+
+    return f"""<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zertifikate – Mayada Esmail</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <div class="max-w-5xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <a href="./index.html" class="text-sm text-slate-400 hover:text-amber-400">&larr; Zur&uuml;ck zur Website</a>
+      <h1 class="text-xl font-bold">Zertifikate</h1>
+      <span id="cert-counter" class="text-sm text-slate-400"></span>
+    </div>
+
+    <div class="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700 gap-3">
+        <button id="cert-prev" class="px-4 py-2 bg-slate-800 rounded-lg font-semibold disabled:opacity-40">&larr; Vorherige</button>
+        <h2 id="cert-title" class="text-sm font-semibold text-center flex-1 truncate"></h2>
+        <button id="cert-next" class="px-4 py-2 bg-slate-800 rounded-lg font-semibold disabled:opacity-40">N&auml;chste &rarr;</button>
+      </div>
+      <iframe id="cert-frame" class="w-full" style="height:75vh;background:#fff;border:0;" title="Zertifikat"></iframe>
+    </div>
+
+    <div class="mt-6 flex flex-wrap gap-2" id="cert-list"></div>
+  </div>
+
+<script>
+const certificates = {certificates_json};
+let currentIndex = 0;
+
+const frame = document.getElementById('cert-frame');
+const title = document.getElementById('cert-title');
+const counter = document.getElementById('cert-counter');
+const prevBtn = document.getElementById('cert-prev');
+const nextBtn = document.getElementById('cert-next');
+const listEl = document.getElementById('cert-list');
+
+function render() {{
+    const cert = certificates[currentIndex];
+    frame.src = cert.file;
+    title.textContent = cert.name;
+    counter.textContent = (currentIndex + 1) + ' / ' + certificates.length;
+    prevBtn.disabled = currentIndex === 0;
+    nextBtn.disabled = currentIndex === certificates.length - 1;
+    Array.from(listEl.children).forEach((chip, index) => {{
+        const active = index === currentIndex;
+        chip.classList.toggle('bg-amber-500', active);
+        chip.classList.toggle('text-slate-900', active);
+        chip.classList.toggle('bg-slate-800', !active);
+    }});
+}}
+
+certificates.forEach((cert, index) => {{
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.textContent = cert.name;
+    chip.className = 'px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-800 hover:bg-slate-700 transition-colors';
+    chip.addEventListener('click', () => {{ currentIndex = index; render(); }});
+    listEl.appendChild(chip);
+}});
+
+prevBtn.addEventListener('click', () => {{ if (currentIndex > 0) {{ currentIndex--; render(); }} }});
+nextBtn.addEventListener('click', () => {{ if (currentIndex < certificates.length - 1) {{ currentIndex++; render(); }} }});
+document.addEventListener('keydown', (event) => {{
+    if (event.key === 'ArrowLeft') prevBtn.click();
+    if (event.key === 'ArrowRight') nextBtn.click();
+}});
+
+render();
+</script>
+</body>
+</html>
+"""
 
 
 def create_preview_html(html: str) -> str:
@@ -503,10 +609,17 @@ Hero-Buttons:
     </button>
 
     <!-- Button 2: Öffnet den Lebenslauf direkt über einen absoluten Link -->
-    <a href="./lebenslauf_mayada_esmail.pdf" 
-         target="_blank" 
+    <a href="./lebenslauf_mayada_esmail.pdf"
+         target="_blank"
          style="padding: 12px 24px; background: #1e293b; color: #f1f5f9; font-weight: 600; border: 1px solid #334155; border-radius: 8px; text-decoration: none; display: inline-block;">
         Lebenslauf ansehen
+    </a>
+
+    <!-- Button 3: Öffnet die Zertifikate-Übersicht direkt über einen absoluten Link -->
+    <a href="./zertifikate.html"
+         target="_blank"
+         style="padding: 12px 24px; background: #1e293b; color: #f1f5f9; font-weight: 600; border: 1px solid #334155; border-radius: 8px; text-decoration: none; display: inline-block;">
+        Zertifikate ansehen
     </a>
 
 </div>
@@ -562,10 +675,17 @@ Hero-Buttons:
     </button>
 
     <!-- Button 2: Öffnet den Lebenslauf direkt über einen absoluten Link -->
-    <a href="./lebenslauf_mayada_esmail.pdf" 
-         target="_blank" 
+    <a href="./lebenslauf_mayada_esmail.pdf"
+         target="_blank"
          style="padding: 12px 24px; background: #1e293b; color: #f1f5f9; font-weight: 600; border: 1px solid #334155; border-radius: 8px; text-decoration: none; display: inline-block;">
         Lebenslauf ansehen
+    </a>
+
+    <!-- Button 3: Öffnet die Zertifikate-Übersicht direkt über einen absoluten Link -->
+    <a href="./zertifikate.html"
+         target="_blank"
+         style="padding: 12px 24px; background: #1e293b; color: #f1f5f9; font-weight: 600; border: 1px solid #334155; border-radius: 8px; text-decoration: none; display: inline-block;">
+        Zertifikate ansehen
     </a>
 
 </div>
@@ -725,6 +845,36 @@ def publish_website() -> None:
             "file": RESUME_FILE_NAME,
             "data": base64.b64encode(RESUME_FILE_PATH.read_bytes()).decode("utf-8"),
             "encoding": "base64",
+        }
+    )
+
+    certificate_paths = get_certificate_files()
+    if not certificate_paths:
+        raise ValueError(
+            f"Im Ordner '{CERTIFICATE_DIR}' wurden keine Zertifikats-PDFs gefunden."
+        )
+
+    certificate_entries = []
+    for index, certificate_path in enumerate(certificate_paths, start=1):
+        deploy_file_name = slugify_certificate_filename(certificate_path.stem, index)
+        certificate_entries.append(
+            {
+                "file": f"zertifikate/{deploy_file_name}",
+                "name": prettify_certificate_name(certificate_path.stem),
+            }
+        )
+        files.append(
+            {
+                "file": f"zertifikate/{deploy_file_name}",
+                "data": base64.b64encode(certificate_path.read_bytes()).decode("utf-8"),
+                "encoding": "base64",
+            }
+        )
+
+    files.append(
+        {
+            "file": CERTIFICATE_VIEWER_FILE_NAME,
+            "data": build_certificate_viewer_html(certificate_entries),
         }
     )
 
