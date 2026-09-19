@@ -324,7 +324,7 @@ def create_preview_html(html: str) -> str:
     # Live-Server – ohne <base>-Tag würden relative Pfade in der Vorschau ins Leere laufen.
     preview_html = add_base_href(preview_html, st.session_state.live_url)
 
-    return add_interview_widget(add_chatbot_widget(add_project_interactions(preview_html)))
+    return add_interview_widget(add_project_interactions(preview_html))
 
 
 def add_project_interactions(html: str) -> str:
@@ -477,316 +477,6 @@ section[id], [data-about], [data-projects], [data-milestones], [data-contact] { 
         )
 
 
-def add_chatbot_widget(html: str) -> str:
-        """Fügt den serverseitig angebundenen Portfolio-Chat vor dem Body-Ende ein."""
-        if 'id="portfolio-chatbot"' in html:
-                return html
-
-        chatbot_html = """
-<style>
-@keyframes portfolioChatEnter { from { opacity:0; transform:translateY(18px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
-@keyframes portfolioChatPulse { 0%,100% { box-shadow:0 0 0 0 rgba(45,212,191,.38); } 50% { box-shadow:0 0 0 5px rgba(45,212,191,0); } }
-@keyframes portfolioChatFloat { 0%,100% { translate:0 0; } 50% { translate:0 -6px; } }
-#portfolio-chatbot { animation:portfolioChatEnter .55s ease-out both,portfolioChatFloat 5s ease-in-out .65s infinite; }
-#portfolio-chatbot.chat-collapsed { width:min(280px,calc(100vw - 28px)) !important; }
-#portfolio-chatbot.chat-collapsed #portfolio-chat-toggle { width:100%;min-height:64px;padding:10px 12px;border-radius:8px;background:#0b172a; }
-#portfolio-chatbot.chat-collapsed .portfolio-chat-glow, #portfolio-chatbot.chat-collapsed .portfolio-chat-control { display:none !important; }
-#portfolio-chat-tooltip { display:none; }
-#portfolio-chatbot button:focus-visible, #portfolio-chatbot input:focus-visible { outline:3px solid #fbbf24; outline-offset:2px; }
-#portfolio-chatbot button:hover { filter:brightness(1.06); }
-</style>
-<aside id="portfolio-chatbot" style="position:fixed;right:20px;bottom:20px;z-index:9999;width:min(390px,calc(100vw - 28px));font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:0;">
-    <button id="portfolio-chat-toggle" type="button" aria-expanded="true" style="position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:14px 15px;background:#0b172a;color:#fff;border:1px solid #1e3a5f;border-radius:8px;cursor:pointer;text-align:left;box-shadow:0 18px 42px rgba(2,6,23,.32);overflow:hidden;">
-        <span class="portfolio-chat-glow" aria-hidden="true" style="position:absolute;inset:0 0 0 auto;width:34%;background:linear-gradient(120deg,transparent,rgba(45,212,191,.14));"></span>
-        <span class="portfolio-chat-icon" aria-hidden="true" style="position:relative;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#fbbf24;color:#422006;font-weight:850;font-size:20px;box-shadow:inset 0 0 0 3px rgba(255,255,255,.18);">&#128172;</span>
-        <span class="portfolio-chat-copy" style="position:relative;flex:1;"><span style="display:block;font-weight:800;font-size:15px;line-height:1.2;">Portfolio-Assistent</span><span style="display:block;margin-top:3px;color:#fef3c7;font-size:11px;line-height:1.25;">Hier kannst du gerne Fragen stellen</span><span style="display:flex;align-items:center;gap:5px;margin-top:4px;color:#cbd5e1;font-size:11px;line-height:1.2;"><i aria-hidden="true" style="display:block;width:7px;height:7px;border-radius:50%;background:#2dd4bf;animation:portfolioChatPulse 2s ease-in-out infinite;"></i>Mayada Esmail · online</span></span>
-        <span class="portfolio-chat-control" aria-hidden="true" style="position:relative;color:#fbbf24;font-size:20px;line-height:1;">−</span>
-    </button>
-    <section id="portfolio-chat-panel" style="margin-top:7px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 20px 48px rgba(15,23,42,.24);overflow:hidden;">
-        <div id="portfolio-chat-messages" aria-live="polite" style="height:230px;overflow-y:auto;padding:15px;background:#fff;color:#1e293b;font-size:14px;line-height:1.55;"><p style="max-width:90%;margin:0;padding:11px 12px;background:#eefbf8;border-left:3px solid #0f766e;border-radius:0 7px 7px 0;">Willkommen. Wobei kann ich Sie zu Mayadas Profil unterstützen?</p></div>
-        <div id="portfolio-chat-suggestions" style="display:flex;flex-wrap:wrap;gap:6px;padding:0 13px 13px;background:#fff;"><button type="button" data-question="Welche Kompetenzen bringt Mayada mit?" style="padding:6px 8px;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:5px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Kompetenzen</button><button type="button" data-question="Welche Projekterfahrung hat Mayada?" style="padding:6px 8px;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:5px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Projekterfahrung</button><button type="button" data-question="Ist Mayada für mein Projekt geeignet?" style="padding:6px 8px;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:5px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Projektanfrage</button></div>
-        <form id="portfolio-chat-form" style="display:flex;gap:8px;padding:12px;border-top:1px solid #e2e8f0;background:#fff;">
-            <input id="portfolio-chat-input" type="text" aria-label="Frage an den Portfolio-Assistenten" placeholder="Ihre Frage eingeben..." required style="min-width:0;flex:1;padding:10px 11px;color:#0f172a;background:#fff;border:1px solid #94a3b8;border-radius:6px;font:inherit;font-size:14px;outline-offset:2px;">
-            <button id="portfolio-chat-mic" type="button" aria-label="Frage per Sprache eingeben" title="Frage sprechen" style="width:40px;padding:0;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:6px;cursor:pointer;font-size:16px;">&#127908;</button>
-            <button id="portfolio-chat-submit" type="submit" aria-label="Frage senden" style="padding:10px 14px;background:#0f766e;color:#fff;border:0;border-radius:6px;cursor:pointer;font:inherit;font-size:13px;font-weight:800;box-shadow:0 4px 10px rgba(15,118,110,.22);">Senden</button>
-            <button id="portfolio-chat-voice" type="button" aria-pressed="true" aria-label="Antworten vorlesen: an" title="Antworten vorlesen" style="width:40px;padding:0;background:#f8fafc;color:#0f766e;border:1px solid #99f6e4;border-radius:6px;cursor:pointer;font-size:16px;">&#128266;</button>
-        </form>
-    </section>
-</aside>
-<script>
-(() => {
-    const toggle = document.getElementById('portfolio-chat-toggle');
-    const panel = document.getElementById('portfolio-chat-panel');
-    const form = document.getElementById('portfolio-chat-form');
-    const input = document.getElementById('portfolio-chat-input');
-    const mic = document.getElementById('portfolio-chat-mic');
-    const submit = document.getElementById('portfolio-chat-submit');
-    const voice = document.getElementById('portfolio-chat-voice');
-    const messages = document.getElementById('portfolio-chat-messages');
-    const history = [];
-    let voiceEnabled = true;
-    const cleanAssistantText = (text) => text
-        .replace(/\*\*/g, '')
-        .replace(/__/g, '')
-        .replace(/`/g, '')
-        .replace(/\*/g, '')
-        .trim();
-    const splitIntoSpeechChunks = (text) => text
-        .split(/\n+/)
-        .map((line) => line
-            .replace(/^[ \t]*[-•][ \t]*/, '')
-            .replace(/^[ \t]*\d+[.)][ \t]*/, '')
-            .trim())
-        .filter(Boolean)
-        .flatMap((line) => line.match(/[^.!?]+[.!?]*/g) || [line])
-        .map((chunk) => chunk.replace(/\s{2,}/g, ' ').trim())
-        .filter(Boolean);
-    let preferredVoice = null;
-    const pickPreferredVoice = () => {
-        if (!('speechSynthesis' in window)) return null;
-        const voices = window.speechSynthesis.getVoices();
-        if (!voices.length) return null;
-        const germanVoices = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith('de'));
-        const pool = germanVoices.length ? germanVoices : voices;
-        const preferredNameHints = ['online (natural)', 'natural', 'google', 'online', 'katja', 'conrad', 'female'];
-        for (const hint of preferredNameHints) {
-            const match = pool.find((v) => v.name.toLowerCase().includes(hint));
-            if (match) return match;
-        }
-        return pool[0] || null;
-    };
-    if ('speechSynthesis' in window) {
-        preferredVoice = pickPreferredVoice();
-        window.speechSynthesis.addEventListener('voiceschanged', () => {
-            preferredVoice = pickPreferredVoice();
-        });
-    }
-    const speak = (text) => {
-        if (!voiceEnabled || !('speechSynthesis' in window)) return;
-        window.speechSynthesis.cancel();
-        const chunks = splitIntoSpeechChunks(text);
-        chunks.forEach((chunk) => {
-            const utterance = new SpeechSynthesisUtterance(chunk);
-            utterance.lang = preferredVoice ? preferredVoice.lang : 'de-DE';
-            if (preferredVoice) utterance.voice = preferredVoice;
-            utterance.rate = 1;
-            utterance.pitch = 1;
-            window.speechSynthesis.speak(utterance);
-        });
-    };
-    const addMessage = (text, label, isUser = false) => {
-        const message = document.createElement('p');
-        message.style.cssText = 'max-width:90%;margin:0 0 10px;padding:10px 11px;border-radius:7px;' + (isUser ? 'margin-left:auto;background:#10213d;color:#fff;' : 'background:#f1f5f9;color:#1e293b;');
-        message.innerHTML = '<strong>' + label + ':</strong> ';
-        message.append(document.createTextNode(text));
-        messages.append(message);
-        messages.scrollTop = messages.scrollHeight;
-    };
-    toggle.addEventListener('click', () => {
-        panel.hidden = !panel.hidden;
-        document.getElementById('portfolio-chatbot').classList.toggle('chat-collapsed', panel.hidden);
-        toggle.setAttribute('aria-expanded', String(!panel.hidden));
-        if (!panel.hidden) input.focus();
-    });
-    const sendQuestion = async (question) => {
-        if (!question) return;
-        addMessage(question, 'Sie', true);
-        history.push({role: 'user', content: question});
-        input.value = '';
-        input.disabled = true;
-        submit.disabled = true;
-        submit.textContent = 'Sendet...';
-        const typing = document.createElement('p');
-        typing.id = 'portfolio-chat-typing';
-        typing.textContent = 'Assistent schreibt...';
-        typing.style.cssText = 'margin:0 0 10px;color:#64748b;font-size:13px;font-style:italic;';
-        messages.append(typing);
-        messages.scrollTop = messages.scrollHeight;
-        try {
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({question, history: history.slice(-6)})
-            });
-            const contentType = response.headers.get('content-type') || '';
-            const data = contentType.includes('application/json') ? await response.json() : {};
-            if (!response.ok) {
-                const message = response.status === 404 || response.status === 405
-                    ? 'Der Assistent wird nach der Veröffentlichung auf Vercel aktiv.'
-                    : (data.error || 'Der Assistent ist momentan nicht erreichbar.');
-                throw new Error(message);
-            }
-            if (typeof data.answer !== 'string' || !data.answer.trim()) {
-                throw new Error('Der Assistent konnte gerade keine Antwort erstellen. Bitte versuchen Sie es erneut.');
-            }
-            const answer = cleanAssistantText(data.answer);
-            addMessage(answer, 'Assistent');
-            history.push({role: 'assistant', content: answer});
-            speak(answer);
-        } catch (error) {
-            addMessage(error.message, 'Hinweis');
-        } finally {
-            typing.remove();
-            input.disabled = false;
-            submit.disabled = false;
-            submit.textContent = 'Senden';
-            input.focus();
-        }
-    };
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        await sendQuestion(input.value.trim());
-    });
-    document.querySelectorAll('#portfolio-chat-suggestions [data-question]').forEach((button) => {
-        button.addEventListener('click', () => sendQuestion(button.dataset.question));
-    });
-    voice.addEventListener('click', () => {
-        voiceEnabled = !voiceEnabled;
-        voice.setAttribute('aria-pressed', String(voiceEnabled));
-        voice.setAttribute('aria-label', 'Antworten vorlesen: ' + (voiceEnabled ? 'an' : 'aus'));
-        voice.style.background = voiceEnabled ? '#f8fafc' : '#e2e8f0';
-        if (!voiceEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
-    });
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let isRecording = false;
-    const setMicState = (state) => {
-        if (state === 'listening') {
-            mic.innerHTML = '&#9679;';
-            mic.style.background = '#fee2e2';
-            mic.style.color = '#b91c1c';
-            mic.title = 'Aufnahme läuft – zum Beenden klicken';
-        } else if (state === 'processing') {
-            mic.innerHTML = '...';
-            mic.style.background = '#f8fafc';
-            mic.style.color = '#0f766e';
-            mic.title = 'Sprache wird verarbeitet...';
-        } else {
-            mic.innerHTML = '&#127908;';
-            mic.style.background = '#f8fafc';
-            mic.style.color = '#0f766e';
-            mic.title = 'Frage sprechen';
-        }
-    };
-    const startNativeRecognition = () => {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'de-DE';
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-        mic.disabled = true;
-        setMicState('listening');
-        recognition.onresult = (event) => {
-            const transcript = (event.results[0][0].transcript || '').trim();
-            if (transcript) {
-                input.value = transcript;
-                form.requestSubmit();
-            }
-        };
-        recognition.onerror = (event) => {
-            const message = event.error === 'not-allowed' || event.error === 'permission-denied'
-                ? 'Der Zugriff auf das Mikrofon wurde verweigert. Bitte erlauben Sie den Zugriff in den Browser-Einstellungen.'
-                : event.error === 'no-speech'
-                    ? 'Es wurde keine Sprache erkannt. Bitte versuchen Sie es erneut.'
-                    : 'Die Spracheingabe konnte nicht gestartet werden. Bitte versuchen Sie es erneut.';
-            addMessage(message, 'Hinweis');
-        };
-        recognition.onend = () => {
-            mic.disabled = false;
-            setMicState('idle');
-        };
-        recognition.start();
-    };
-    const stopFallbackRecording = () => {
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            mediaRecorder.stop();
-        }
-    };
-    const startFallbackRecording = async () => {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
-            addMessage('Die Spracheingabe wird von diesem Browser nicht unterstützt. Bitte tippen Sie Ihre Frage ein.', 'Hinweis');
-            return;
-        }
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            audioChunks = [];
-            const mimeType = (typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported('audio/webm'))
-                ? 'audio/webm'
-                : '';
-            mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-            isRecording = true;
-            setMicState('listening');
-            mediaRecorder.addEventListener('dataavailable', (event) => {
-                if (event.data && event.data.size > 0) audioChunks.push(event.data);
-            });
-            mediaRecorder.addEventListener('stop', async () => {
-                isRecording = false;
-                stream.getTracks().forEach((track) => track.stop());
-                setMicState('processing');
-                mic.disabled = true;
-                try {
-                    const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
-                    if (blob.size < 1000) {
-                        throw new Error('Die Aufnahme war zu kurz. Bitte versuchen Sie es erneut.');
-                    }
-                    const response = await fetch('/api/transcribe', {
-                        method: 'POST',
-                        headers: { 'Content-Type': blob.type || 'audio/webm' },
-                        body: blob,
-                    });
-                    const contentType = response.headers.get('content-type') || '';
-                    const data = contentType.includes('application/json') ? await response.json() : {};
-                    if (!response.ok) {
-                        const message = response.status === 404 || response.status === 405
-                            ? 'Die Spracherkennung wird nach der Veröffentlichung auf Vercel aktiv.'
-                            : (data.error || 'Die Sprachaufnahme konnte nicht verarbeitet werden.');
-                        throw new Error(message);
-                    }
-                    const transcript = (data.text || '').trim();
-                    if (!transcript) {
-                        throw new Error('Es wurde keine Sprache erkannt. Bitte versuchen Sie es erneut.');
-                    }
-                    input.value = transcript;
-                    form.requestSubmit();
-                } catch (error) {
-                    addMessage(error.message, 'Hinweis');
-                } finally {
-                    mic.disabled = false;
-                    setMicState('idle');
-                }
-            });
-            mediaRecorder.start();
-            setTimeout(() => { if (isRecording) stopFallbackRecording(); }, 15000);
-        } catch (error) {
-            setMicState('idle');
-            addMessage('Der Zugriff auf das Mikrofon wurde verweigert oder ist nicht möglich.', 'Hinweis');
-        }
-    };
-    mic.addEventListener('click', () => {
-        if (isRecording) {
-            stopFallbackRecording();
-            return;
-        }
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            startNativeRecognition();
-        } else {
-            startFallbackRecording();
-        }
-    });
-})();
-</script>
-"""
-
-        return re.sub(
-            r"</body\s*>",
-            lambda _match: chatbot_html + "</body>",
-            html,
-            count=1,
-            flags=re.I,
-        )
-
-
 def add_interview_widget(html: str) -> str:
         """Fügt den Button 'Simuliertes Vorstellungsgespräch' samt Interview-Avatar ein."""
         if 'id="interview-avatar-widget"' in html:
@@ -805,8 +495,8 @@ def add_interview_widget(html: str) -> str:
 #interview-avatar-trigger { animation:interviewAvatarEnter .55s ease-out both,interviewAvatarFloat 5s ease-in-out .9s infinite; }
 #interview-avatar-trigger:hover { filter:brightness(1.08); transform:translateY(-2px); }
 .interview-wave-hand { display:inline-block; transform-origin:70% 70%; animation:interviewWave 2.4s ease-in-out infinite; }
-#interview-avatar-callout { position:fixed; left:20px; bottom:82px; z-index:9998; max-width:min(250px,calc(100vw - 40px)); padding:10px 14px; background:#0b1220; color:#f1f5f9; font-size:13px; font-weight:600; line-height:1.4; border-radius:14px; border:1px solid rgba(255,255,255,.14); box-shadow:0 16px 40px rgba(2,6,23,.4); opacity:0; transform:translateY(8px); pointer-events:none; transition:opacity .4s ease,transform .4s ease; }
-#interview-avatar-callout::after { content:''; position:absolute; left:22px; bottom:-6px; width:12px; height:12px; background:#0b1220; border-right:1px solid rgba(255,255,255,.14); border-bottom:1px solid rgba(255,255,255,.14); transform:rotate(45deg); }
+#interview-avatar-callout { position:fixed; right:20px; bottom:82px; z-index:9998; max-width:min(250px,calc(100vw - 40px)); padding:10px 14px; background:#0b1220; color:#f1f5f9; font-size:13px; font-weight:600; line-height:1.4; border-radius:14px; border:1px solid rgba(255,255,255,.14); box-shadow:0 16px 40px rgba(2,6,23,.4); opacity:0; transform:translateY(8px); pointer-events:none; transition:opacity .4s ease,transform .4s ease; }
+#interview-avatar-callout::after { content:''; position:absolute; right:22px; bottom:-6px; width:12px; height:12px; background:#0b1220; border-right:1px solid rgba(255,255,255,.14); border-bottom:1px solid rgba(255,255,255,.14); transform:rotate(45deg); }
 #interview-avatar-callout.interview-callout-visible { opacity:1; transform:translateY(0); }
 #interview-avatar-overlay { animation:interviewOverlayEnter .2s ease-out both; }
 #interview-avatar-panel { animation:interviewPanelEnter .25s ease-out both; }
@@ -824,7 +514,7 @@ def add_interview_widget(html: str) -> str:
 </style>
 <div id="interview-avatar-widget" style="font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
     <div id="interview-avatar-callout" role="status">Lass uns ein virtuelles Vorstellungsgespräch führen &#128075;</div>
-    <button id="interview-avatar-trigger" type="button" style="position:fixed;left:20px;bottom:20px;z-index:9999;display:flex;align-items:center;gap:10px;padding:8px 18px 8px 8px;background:linear-gradient(to right,#2563eb,#7c3aed);color:#fff;font:inherit;font-weight:700;font-size:14px;border:none;border-radius:999px;cursor:pointer;box-shadow:0 12px 30px rgba(37,99,235,.35);max-width:min(320px,calc(100vw - 28px));text-align:left;">
+    <button id="interview-avatar-trigger" type="button" style="position:fixed;right:20px;bottom:20px;z-index:9999;display:flex;align-items:center;gap:10px;padding:8px 18px 8px 8px;background:linear-gradient(to right,#2563eb,#7c3aed);color:#fff;font:inherit;font-weight:700;font-size:14px;border:none;border-radius:999px;cursor:pointer;box-shadow:0 12px 30px rgba(37,99,235,.35);max-width:min(320px,calc(100vw - 28px));text-align:left;">
         <span style="position:relative;flex-shrink:0;display:inline-block;width:36px;height:36px;">
             <img src="interview_avatar.jpg" alt="" aria-hidden="true" style="width:100%;height:100%;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.7);display:block;">
             <span class="interview-wave-hand" aria-hidden="true" style="position:absolute;bottom:-3px;right:-7px;font-size:15px;">&#128075;</span>
@@ -1505,18 +1195,12 @@ def upload_file_to_vercel(content: bytes) -> str:
 def publish_website() -> None:
     """Veröffentlicht den aktuellen HTML-Entwurf auf Vercel."""
     html = add_interview_widget(
-        add_chatbot_widget(
-            add_project_interactions(require_complete_html(st.session_state.generated_html))
-        )
+        add_project_interactions(require_complete_html(st.session_state.generated_html))
     )
     project_name = safe_project_name(st.session_state.project_name)
 
     raw_files: list[tuple[str, bytes]] = [
         ("index.html", html.encode("utf-8")),
-        (
-            "api/chat.py",
-            Path(__file__).with_name("api").joinpath("chat.py").read_bytes(),
-        ),
         (
             "api/interview.py",
             Path(__file__).with_name("api").joinpath("interview.py").read_bytes(),
