@@ -19,7 +19,7 @@ OPENAI_MODEL = "gpt-4o-mini"
 FORMSPREE_ENDPOINT = "https://formspree.io/f/mnpqnyvk"
 RESUME_FILE_NAME = "lebenslauf_mayada_esmail.pdf"
 RESUME_FILE_PATH = Path(__file__).with_name(RESUME_FILE_NAME)
-CERTIFICATE_DIR = Path(r"C:\Users\mayad\OneDrive\Desktop\Bewerbungen\zertifikat")
+CERTIFICATE_DIR = Path(__file__).with_name("zertifikate")
 CERTIFICATE_VIEWER_FILE_NAME = "zertifikate.html"
 VERCEL_DEPLOYMENTS_URL = (
     "https://api.vercel.com/v13/deployments"
@@ -154,6 +154,16 @@ def slugify_certificate_filename(stem: str, index: int) -> str:
 
 def prettify_certificate_name(stem: str) -> str:
     """Erstellt einen lesbaren Anzeigenamen aus dem Dateinamen."""
+    match = re.match(
+        r"^Zertifikat[_-]\d+[_-](.+?)[_-]\d{6,8}(?:\s*\(\d+\))?$",
+        stem,
+        re.IGNORECASE,
+    )
+
+    if match:
+        course = re.sub(r"[_-]+", " ", match.group(1)).strip()
+        return f"{course} – Zertifikat"
+
     return re.sub(r"[_-]+", " ", stem).strip()
 
 
@@ -166,28 +176,57 @@ def build_certificate_viewer_html(certificates: list[dict]) -> str:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zertifikate – Mayada Esmail</title>
+<title>Zertifikate &ndash; Mayada Esmail</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @keyframes certFadeIn {{ from {{ opacity:0; transform:translateY(6px); }} to {{ opacity:1; transform:translateY(0); }} }}
+  body {{ font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; }}
+  #cert-frame {{ animation: certFadeIn .35s ease both; }}
+  .cert-item {{ transition: background-color .2s ease, border-color .2s ease, transform .2s ease; }}
+  .cert-item:hover {{ transform: translateX(2px); }}
+  .cert-item.active {{ background: linear-gradient(90deg, rgba(37,99,235,.18), rgba(124,58,237,.18)); border-color: #7c3aed; }}
+  .cert-nav-btn {{ transition: filter .2s ease, transform .2s ease; }}
+  .cert-nav-btn:not(:disabled):hover {{ filter: brightness(1.12); transform: translateY(-1px); }}
+</style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen">
-  <div class="max-w-5xl mx-auto px-4 py-8">
-    <div class="flex items-center justify-between mb-6">
-      <a href="./index.html" class="text-sm text-slate-400 hover:text-amber-400">&larr; Zur&uuml;ck zur Website</a>
-      <h1 class="text-xl font-bold">Zertifikate</h1>
-      <span id="cert-counter" class="text-sm text-slate-400"></span>
-    </div>
 
-    <div class="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl">
-      <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700 gap-3">
-        <button id="cert-prev" class="px-4 py-2 bg-slate-800 rounded-lg font-semibold disabled:opacity-40">&larr; Vorherige</button>
-        <h2 id="cert-title" class="text-sm font-semibold text-center flex-1 truncate"></h2>
-        <button id="cert-next" class="px-4 py-2 bg-slate-800 rounded-lg font-semibold disabled:opacity-40">N&auml;chste &rarr;</button>
+  <header class="border-b border-slate-800 bg-slate-900/70 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+      <a href="./index.html" class="text-sm font-medium text-slate-400 hover:text-cyan-300 transition-colors flex items-center gap-1">
+        <span aria-hidden="true">&larr;</span> Zur&uuml;ck zur Website
+      </a>
+      <div class="text-center">
+        <h1 class="text-lg sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">
+          Zertifikate &amp; Nachweise
+        </h1>
+        <p class="text-xs text-slate-500">Mayada Esmail</p>
+      </div>
+      <span id="cert-counter" class="text-sm font-semibold text-slate-300 bg-slate-800 border border-slate-700 rounded-full px-3 py-1 whitespace-nowrap"></span>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+
+    <aside class="lg:sticky lg:top-24 lg:self-start bg-slate-900 border border-slate-800 rounded-xl p-2 max-h-[70vh] overflow-y-auto" id="cert-list"></aside>
+
+    <section class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+      <div class="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-slate-800 gap-3">
+        <button id="cert-prev" class="cert-nav-btn px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed">&larr; Vorherige</button>
+        <h2 id="cert-title" class="text-sm sm:text-base font-semibold text-center flex-1 truncate"></h2>
+        <a id="cert-download" href="#" download class="hidden sm:inline-flex px-3 py-2 bg-gradient-to-r from-blue-600 to-violet-600 rounded-lg font-semibold text-sm items-center gap-1 hover:brightness-110 transition">
+          &darr; PDF
+        </a>
+        <button id="cert-next" class="cert-nav-btn px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed">N&auml;chste &rarr;</button>
       </div>
       <iframe id="cert-frame" class="w-full" style="height:75vh;background:#fff;border:0;" title="Zertifikat"></iframe>
-    </div>
+    </section>
 
-    <div class="mt-6 flex flex-wrap gap-2" id="cert-list"></div>
-  </div>
+  </main>
+
+  <footer class="max-w-6xl mx-auto px-4 sm:px-6 pb-10 text-center text-xs text-slate-600">
+    {len(certificates)} Zertifikat(e) &middot; mit Pfeiltasten oder den Schaltfl&auml;chen durchbl&auml;ttern
+  </footer>
 
 <script>
 const certificates = {certificates_json};
@@ -198,6 +237,7 @@ const title = document.getElementById('cert-title');
 const counter = document.getElementById('cert-counter');
 const prevBtn = document.getElementById('cert-prev');
 const nextBtn = document.getElementById('cert-next');
+const downloadLink = document.getElementById('cert-download');
 const listEl = document.getElementById('cert-list');
 
 function render() {{
@@ -205,23 +245,26 @@ function render() {{
     frame.src = cert.file;
     title.textContent = cert.name;
     counter.textContent = (currentIndex + 1) + ' / ' + certificates.length;
+    downloadLink.href = cert.file;
+    downloadLink.setAttribute('download', cert.name + '.pdf');
     prevBtn.disabled = currentIndex === 0;
     nextBtn.disabled = currentIndex === certificates.length - 1;
-    Array.from(listEl.children).forEach((chip, index) => {{
-        const active = index === currentIndex;
-        chip.classList.toggle('bg-amber-500', active);
-        chip.classList.toggle('text-slate-900', active);
-        chip.classList.toggle('bg-slate-800', !active);
+    Array.from(listEl.children).forEach((item, index) => {{
+        item.classList.toggle('active', index === currentIndex);
     }});
+    const activeItem = listEl.children[currentIndex];
+    if (activeItem) activeItem.scrollIntoView({{ block: 'nearest' }});
 }}
 
 certificates.forEach((cert, index) => {{
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.textContent = cert.name;
-    chip.className = 'px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-800 hover:bg-slate-700 transition-colors';
-    chip.addEventListener('click', () => {{ currentIndex = index; render(); }});
-    listEl.appendChild(chip);
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'cert-item w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-lg border border-transparent hover:bg-slate-800/70';
+    item.innerHTML =
+        '<span class="flex-shrink-0 w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">' + (index + 1) + '</span>' +
+        '<span class="text-sm font-medium text-slate-200 truncate">' + cert.name + '</span>';
+    item.addEventListener('click', () => {{ currentIndex = index; render(); }});
+    listEl.appendChild(item);
 }});
 
 prevBtn.addEventListener('click', () => {{ if (currentIndex > 0) {{ currentIndex--; render(); }} }});
