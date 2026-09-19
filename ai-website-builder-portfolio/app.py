@@ -20,6 +20,12 @@ OPENAI_MODEL = "gpt-4o-mini"
 FORMSPREE_ENDPOINT = "https://formspree.io/f/mnpqnyvk"
 RESUME_FILE_NAME = "lebenslauf_mayada_esmail.pdf"
 RESUME_FILE_PATH = Path(__file__).with_name(RESUME_FILE_NAME)
+MUSTERANTWORTEN_FILE_NAME = "interview_musterantworten.md"
+MUSTERANTWORTEN_FILE_PATH = Path(__file__).with_name(MUSTERANTWORTEN_FILE_NAME)
+INTERVIEW_AVATAR_FILE_NAME = "interview_avatar.jpg"
+INTERVIEW_AVATAR_FILE_PATH = Path(__file__).with_name(INTERVIEW_AVATAR_FILE_NAME)
+INTERVIEW_AVATAR_3D_FILE_NAME = "interview_avatar.glb"
+INTERVIEW_AVATAR_3D_FILE_PATH = Path(__file__).with_name(INTERVIEW_AVATAR_3D_FILE_NAME)
 CERTIFICATE_DIR = Path(__file__).with_name("zertifikate")
 CERTIFICATE_VIEWER_FILE_NAME = "zertifikate.html"
 VERCEL_DEPLOYMENTS_URL = (
@@ -318,7 +324,7 @@ def create_preview_html(html: str) -> str:
     # Live-Server – ohne <base>-Tag würden relative Pfade in der Vorschau ins Leere laufen.
     preview_html = add_base_href(preview_html, st.session_state.live_url)
 
-    return add_chatbot_widget(add_project_interactions(preview_html))
+    return add_interview_widget(add_chatbot_widget(add_project_interactions(preview_html)))
 
 
 def add_project_interactions(html: str) -> str:
@@ -781,6 +787,360 @@ def add_chatbot_widget(html: str) -> str:
         )
 
 
+def add_interview_widget(html: str) -> str:
+        """Fügt den Button 'Simuliertes Vorstellungsgespräch' samt Interview-Avatar ein."""
+        if 'id="interview-avatar-widget"' in html:
+                return html
+
+        interview_html = """
+<style>
+@keyframes interviewAvatarEnter { from { opacity:0; transform:translateY(18px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
+@keyframes interviewAvatarFloat { 0%,100% { translate:0 0; } 50% { translate:0 -6px; } }
+@keyframes interviewOverlayEnter { from { opacity:0; } to { opacity:1; } }
+@keyframes interviewPanelEnter { from { opacity:0; transform:translateY(16px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+#interview-avatar-trigger { animation:interviewAvatarEnter .55s ease-out both,interviewAvatarFloat 5s ease-in-out .9s infinite; }
+#interview-avatar-trigger:hover { filter:brightness(1.08); transform:translateY(-2px); }
+#interview-avatar-overlay { animation:interviewOverlayEnter .2s ease-out both; }
+#interview-avatar-panel { animation:interviewPanelEnter .25s ease-out both; }
+#interview-avatar-widget button:focus-visible, #interview-avatar-widget input:focus-visible { outline:3px solid #fbbf24; outline-offset:2px; }
+</style>
+<div id="interview-avatar-widget" style="font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <button id="interview-avatar-trigger" type="button" style="position:fixed;left:20px;bottom:20px;z-index:9999;display:flex;align-items:center;gap:10px;padding:9px 18px 9px 9px;background:linear-gradient(to right,#2563eb,#7c3aed);color:#fff;font:inherit;font-weight:700;font-size:14px;border:none;border-radius:999px;cursor:pointer;box-shadow:0 12px 30px rgba(37,99,235,.35);max-width:min(320px,calc(100vw - 28px));text-align:left;">
+        <img src="interview_avatar.jpg" alt="" aria-hidden="true" style="flex-shrink:0;width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.7);">
+        <span>Simuliertes Vorstellungsgespräch</span>
+    </button>
+
+    <div id="interview-avatar-overlay" hidden style="position:fixed;inset:0;z-index:10000;background:rgba(10,12,18,.55);display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div id="interview-avatar-panel" style="width:100%;max-width:480px;max-height:85vh;display:flex;flex-direction:column;background:#fff;border-radius:16px;box-shadow:0 24px 64px rgba(2,6,23,.4);overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid #e2e8f0;">
+                <img src="interview_avatar.jpg" alt="Mayada Esmail" style="flex-shrink:0;width:38px;height:38px;border-radius:50%;object-fit:cover;">
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:800;font-size:15px;color:#0f172a;">Interview-Avatar &middot; Mayada Esmail</div>
+                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7c3aed;font-weight:700;">KI-Simulation, kein Live-Chat mit Mayada</div>
+                </div>
+                <button id="interview-avatar-close" type="button" aria-label="Schließen" style="width:32px;height:32px;border:none;background:none;color:#64748b;font-size:18px;cursor:pointer;border-radius:8px;">&#10005;</button>
+            </div>
+            <div id="interview-avatar-stage" style="position:relative;height:210px;flex-shrink:0;background:radial-gradient(circle at 50% 30%,#eef2ff,#e2e8f0);overflow:hidden;">
+                <canvas id="interview-avatar-canvas" style="width:100%;height:100%;display:block;"></canvas>
+                <div id="interview-avatar-status" style="position:absolute;left:10px;bottom:8px;font-size:11px;font-weight:700;color:#7c3aed;background:#fff;border:1px solid #ddd6fe;border-radius:999px;padding:3px 10px;">Lädt Avatar …</div>
+            </div>
+            <div id="interview-avatar-messages" aria-live="polite" style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px;background:#f8fafc;"></div>
+            <div id="interview-avatar-suggestions" style="display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 12px;background:#f8fafc;">
+                <button type="button" data-question="Warum der Wechsel zu AI Engineering?" style="padding:6px 10px;background:#fff;color:#7c3aed;border:1px solid #ddd6fe;border-radius:999px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Warum AI Engineering?</button>
+                <button type="button" data-question="Was sind deine Stärken?" style="padding:6px 10px;background:#fff;color:#7c3aed;border:1px solid #ddd6fe;border-radius:999px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Stärken</button>
+                <button type="button" data-question="Erzähl mir von einem deiner Projekte." style="padding:6px 10px;background:#fff;color:#7c3aed;border:1px solid #ddd6fe;border-radius:999px;cursor:pointer;font:inherit;font-size:12px;font-weight:650;">Ein Projekt</button>
+            </div>
+            <form id="interview-avatar-form" style="display:flex;gap:8px;padding:12px;border-top:1px solid #e2e8f0;background:#fff;">
+                <input id="interview-avatar-input" type="text" aria-label="Frage an den Interview-Avatar" placeholder="Frage stellen, z. B. auf Deutsch oder Englisch ..." required style="min-width:0;flex:1;padding:10px 11px;color:#0f172a;background:#fff;border:1px solid #94a3b8;border-radius:6px;font:inherit;font-size:14px;">
+                <button id="interview-avatar-mic" type="button" aria-label="Frage per Sprache eingeben" title="Frage sprechen" style="width:40px;padding:0;background:#f8fafc;color:#7c3aed;border:1px solid #ddd6fe;border-radius:6px;cursor:pointer;font-size:16px;">&#127908;</button>
+                <button id="interview-avatar-voice" type="button" aria-pressed="true" aria-label="Antworten vorlesen: an" title="Antworten vorlesen" style="width:40px;padding:0;background:#f8fafc;color:#7c3aed;border:1px solid #ddd6fe;border-radius:6px;cursor:pointer;font-size:16px;">&#128266;</button>
+                <button id="interview-avatar-send" type="submit" style="padding:10px 14px;background:#1e293b;color:#fff;border:0;border-radius:6px;cursor:pointer;font:inherit;font-size:13px;font-weight:800;">Senden</button>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+(() => {
+    const trigger = document.getElementById('interview-avatar-trigger');
+    const overlay = document.getElementById('interview-avatar-overlay');
+    const closeBtn = document.getElementById('interview-avatar-close');
+    const form = document.getElementById('interview-avatar-form');
+    const input = document.getElementById('interview-avatar-input');
+    const mic = document.getElementById('interview-avatar-mic');
+    const voice = document.getElementById('interview-avatar-voice');
+    const send = document.getElementById('interview-avatar-send');
+    const messages = document.getElementById('interview-avatar-messages');
+    const suggestions = document.getElementById('interview-avatar-suggestions');
+    const history = [];
+    let opened = false;
+    let voiceEnabled = true;
+
+    let preferredVoice = null;
+    const pickPreferredVoice = () => {
+        if (!('speechSynthesis' in window)) return null;
+        const voices = window.speechSynthesis.getVoices();
+        if (!voices.length) return null;
+        const germanVoices = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith('de'));
+        const pool = germanVoices.length ? germanVoices : voices;
+        const preferredNameHints = ['online (natural)', 'natural', 'google', 'online', 'katja', 'female'];
+        for (const hint of preferredNameHints) {
+            const match = pool.find((v) => v.name.toLowerCase().includes(hint));
+            if (match) return match;
+        }
+        return pool[0] || null;
+    };
+    if ('speechSynthesis' in window) {
+        preferredVoice = pickPreferredVoice();
+        window.speechSynthesis.addEventListener('voiceschanged', () => { preferredVoice = pickPreferredVoice(); });
+    }
+    const speak = (text) => {
+        if (!voiceEnabled || !('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text.replace(/\*\*|__|`|\*/g, ''));
+        utterance.lang = preferredVoice ? preferredVoice.lang : 'de-DE';
+        if (preferredVoice) utterance.voice = preferredVoice;
+        utterance.onstart = () => document.dispatchEvent(new CustomEvent('interview-avatar-speak-start'));
+        utterance.onend = () => document.dispatchEvent(new CustomEvent('interview-avatar-speak-end'));
+        utterance.onerror = () => document.dispatchEvent(new CustomEvent('interview-avatar-speak-end'));
+        window.speechSynthesis.speak(utterance);
+    };
+    voice.addEventListener('click', () => {
+        voiceEnabled = !voiceEnabled;
+        voice.setAttribute('aria-pressed', String(voiceEnabled));
+        voice.setAttribute('aria-label', 'Antworten vorlesen: ' + (voiceEnabled ? 'an' : 'aus'));
+        voice.style.background = voiceEnabled ? '#f8fafc' : '#e2e8f0';
+        if (!voiceEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+    });
+
+    const addMessage = (text, isUser) => {
+        const bubble = document.createElement('div');
+        bubble.style.cssText = 'max-width:85%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.55;white-space:pre-wrap;' +
+            (isUser
+                ? 'align-self:flex-end;background:#1e293b;color:#fff;border-bottom-right-radius:4px;'
+                : 'align-self:flex-start;background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-bottom-left-radius:4px;');
+        bubble.textContent = text;
+        messages.append(bubble);
+        messages.scrollTop = messages.scrollHeight;
+        return bubble;
+    };
+
+    const openChat = () => {
+        overlay.hidden = false;
+        if (!opened) {
+            opened = true;
+            addMessage('Hallo, schön dass du hier bist! Frag mich gern alles zu meinem Werdegang, meinen Projekten oder meiner Motivation für AI Engineering.', false);
+        }
+        input.focus();
+    };
+    const closeChat = () => { overlay.hidden = true; };
+
+    trigger.addEventListener('click', openChat);
+    closeBtn.addEventListener('click', closeChat);
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) closeChat(); });
+
+    const sendQuestion = async (question) => {
+        question = (question || '').trim();
+        if (!question) return;
+        addMessage(question, true);
+        history.push({ role: 'user', content: question });
+        input.value = '';
+        input.disabled = true;
+        send.disabled = true;
+        const typing = addMessage('Denkt nach …', false);
+        try {
+            const response = await fetch('/api/interview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question, history: history.slice(-8) }),
+            });
+            const contentType = response.headers.get('content-type') || '';
+            const data = contentType.includes('application/json') ? await response.json() : {};
+            if (!response.ok) {
+                const message = response.status === 404 || response.status === 405
+                    ? 'Der Interview-Avatar wird nach der Veröffentlichung auf Vercel aktiv.'
+                    : (data.error || 'Der Interview-Avatar ist momentan nicht erreichbar.');
+                throw new Error(message);
+            }
+            if (typeof data.answer !== 'string' || !data.answer.trim()) {
+                throw new Error('Dazu konnte gerade keine Antwort erstellt werden. Bitte versuche es erneut.');
+            }
+            typing.textContent = data.answer;
+            history.push({ role: 'assistant', content: data.answer });
+            speak(data.answer);
+        } catch (error) {
+            typing.textContent = error.message;
+        } finally {
+            input.disabled = false;
+            send.disabled = false;
+            input.focus();
+        }
+    };
+
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        sendQuestion(input.value);
+    });
+    suggestions.querySelectorAll('[data-question]').forEach((button) => {
+        button.addEventListener('click', () => sendQuestion(button.dataset.question));
+    });
+
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let isRecording = false;
+    const setMicState = (state) => {
+        if (state === 'listening') { mic.innerHTML = '&#9679;'; mic.style.background = '#fee2e2'; mic.style.color = '#b91c1c'; }
+        else if (state === 'processing') { mic.innerHTML = '...'; mic.style.background = '#f8fafc'; mic.style.color = '#7c3aed'; }
+        else { mic.innerHTML = '&#127908;'; mic.style.background = '#f8fafc'; mic.style.color = '#7c3aed'; }
+    };
+    const startNativeRecognition = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'de-DE';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        mic.disabled = true;
+        setMicState('listening');
+        document.dispatchEvent(new CustomEvent('interview-avatar-listen-start'));
+        recognition.onresult = (event) => {
+            const transcript = (event.results[0][0].transcript || '').trim();
+            if (transcript) { input.value = transcript; form.requestSubmit(); }
+        };
+        recognition.onerror = () => { addMessage('Die Spracheingabe konnte nicht gestartet werden. Bitte versuche es erneut.', false); };
+        recognition.onend = () => { mic.disabled = false; setMicState('idle'); document.dispatchEvent(new CustomEvent('interview-avatar-listen-end')); };
+        recognition.start();
+    };
+    const startFallbackRecording = async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+            addMessage('Die Spracheingabe wird von diesem Browser nicht unterstützt. Bitte tippe deine Frage ein.', false);
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioChunks = [];
+            const mimeType = (typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported('audio/webm')) ? 'audio/webm' : '';
+            mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+            isRecording = true;
+            setMicState('listening');
+            document.dispatchEvent(new CustomEvent('interview-avatar-listen-start'));
+            mediaRecorder.addEventListener('dataavailable', (event) => { if (event.data && event.data.size > 0) audioChunks.push(event.data); });
+            mediaRecorder.addEventListener('stop', async () => {
+                isRecording = false;
+                stream.getTracks().forEach((track) => track.stop());
+                setMicState('processing');
+                mic.disabled = true;
+                document.dispatchEvent(new CustomEvent('interview-avatar-listen-end'));
+                try {
+                    const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+                    if (blob.size < 1000) throw new Error('Die Aufnahme war zu kurz. Bitte versuche es erneut.');
+                    const response = await fetch('/api/transcribe', { method: 'POST', headers: { 'Content-Type': blob.type || 'audio/webm' }, body: blob });
+                    const contentType = response.headers.get('content-type') || '';
+                    const data = contentType.includes('application/json') ? await response.json() : {};
+                    if (!response.ok) throw new Error(data.error || 'Die Sprachaufnahme konnte nicht verarbeitet werden.');
+                    const transcript = (data.text || '').trim();
+                    if (!transcript) throw new Error('Es wurde keine Sprache erkannt. Bitte versuche es erneut.');
+                    input.value = transcript;
+                    form.requestSubmit();
+                } catch (error) {
+                    addMessage(error.message, false);
+                } finally {
+                    mic.disabled = false;
+                    setMicState('idle');
+                }
+            });
+            mediaRecorder.start();
+            setTimeout(() => { if (isRecording && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); }, 15000);
+        } catch (error) {
+            setMicState('idle');
+            addMessage('Der Zugriff auf das Mikrofon wurde verweigert oder ist nicht möglich.', false);
+        }
+    };
+    mic.addEventListener('click', () => {
+        if (isRecording) { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); return; }
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) startNativeRecognition(); else startFallbackRecording();
+    });
+})();
+</script>
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+
+(async () => {
+    const stage = document.getElementById('interview-avatar-stage');
+    const canvas = document.getElementById('interview-avatar-canvas');
+    const statusEl = document.getElementById('interview-avatar-status');
+    if (!stage || !canvas || !statusEl) return;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(28, 1, 0.05, 100);
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x8892b0, 1.15));
+    const key = new THREE.DirectionalLight(0xffffff, 1.0);
+    key.position.set(1, 2, 2.5);
+    scene.add(key);
+
+    function resize() {
+        const w = stage.clientWidth, h = stage.clientHeight;
+        if (!w || !h) return;
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+    }
+
+    let head = null, neck = null, spine = null, spine1 = null, spine2 = null;
+    let baseSpineY = 0;
+
+    try {
+        const loader = new GLTFLoader();
+        const gltf = await loader.loadAsync('interview_avatar.glb');
+        const avatarRoot = gltf.scene;
+        scene.add(avatarRoot);
+
+        head = avatarRoot.getObjectByName('Head');
+        neck = avatarRoot.getObjectByName('Neck');
+        spine = avatarRoot.getObjectByName('Spine');
+        spine1 = avatarRoot.getObjectByName('Spine1');
+        spine2 = avatarRoot.getObjectByName('Spine2');
+        if (spine) baseSpineY = spine.position.y;
+
+        const box = new THREE.Box3().setFromObject(avatarRoot);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+        const headY = box.max.y - size.y * 0.14;
+        camera.position.set(center.x, headY, center.z + size.y * 0.5);
+        camera.lookAt(center.x, headY, center.z);
+
+        statusEl.textContent = 'Bereit';
+    } catch (err) {
+        statusEl.textContent = 'Avatar konnte nicht geladen werden';
+        console.error('Interview-Avatar 3D:', err);
+    }
+
+    resize();
+    if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
+    window.addEventListener('resize', resize);
+
+    let speaking = false;
+    let listening = false;
+    document.addEventListener('interview-avatar-speak-start', () => { speaking = true; statusEl.textContent = 'Spricht …'; });
+    document.addEventListener('interview-avatar-speak-end', () => { speaking = false; statusEl.textContent = 'Bereit'; });
+    document.addEventListener('interview-avatar-listen-start', () => { listening = true; statusEl.textContent = 'Hört zu …'; });
+    document.addEventListener('interview-avatar-listen-end', () => { listening = false; statusEl.textContent = 'Bereit'; });
+
+    const clock = new THREE.Clock();
+    function animate() {
+        requestAnimationFrame(animate);
+        const t = clock.getElapsedTime();
+
+        if (head) {
+            head.rotation.y = Math.sin(t * 0.6) * 0.06 + (listening ? Math.sin(t * 2) * 0.02 : 0);
+            head.rotation.x = Math.sin(t * 0.9) * 0.03 + (listening ? 0.05 : 0) + (speaking ? Math.sin(t * 9) * 0.025 : 0);
+        }
+        if (neck) neck.rotation.y = Math.sin(t * 0.6 + 0.3) * 0.03;
+        if (spine2) spine2.rotation.x = Math.sin(t * 0.5) * 0.015 + (speaking ? Math.sin(t * 9 + 1) * 0.012 : 0);
+        if (spine1) spine1.rotation.y = Math.sin(t * 0.4) * 0.01;
+        if (spine) spine.position.y = baseSpineY + Math.sin(t * 1.2) * 0.004;
+
+        renderer.render(scene, camera);
+    }
+    animate();
+})();
+</script>
+"""
+
+        return re.sub(
+            r"</body\s*>",
+            lambda _match: interview_html + "</body>",
+            html,
+            count=1,
+            flags=re.I,
+        )
+
+
 def ask_ai_for_html(system_instruction: str, user_instruction: str) -> str:
     """Fordert vollständigen HTML-Code von OpenAI an."""
     response = client.chat.completions.create(
@@ -824,9 +1184,9 @@ Regeln:
 Hero-Buttons:
 - Ersetze die beiden bestehenden Buttons der Hero-Section vollständig und unverändert durch diesen nativen HTML-Code:
 <div style="display: flex; gap: 15px; justify-content: center; margin-top: 25px;">
-  
+
     <!-- Button 1: Scrollt direkt zum Formular nach unten via JavaScript -->
-    <button onclick="document.getElementById('contact-form') ? document.getElementById('contact-form').scrollIntoView({{behavior: 'smooth'}}) : window.scrollTo({{top: document.body.scrollHeight, behavior: 'smooth'}});" 
+    <button onclick="document.getElementById('contact-form') ? document.getElementById('contact-form').scrollIntoView({{behavior: 'smooth'}}) : window.scrollTo({{top: document.body.scrollHeight, behavior: 'smooth'}});"
                     style="padding: 12px 24px; background: linear-gradient(to right, #2563eb, #7c3aed); color: white; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);">
         Projekt anfragen
     </button>
@@ -890,9 +1250,9 @@ Regeln:
 Hero-Buttons:
 - Die Hero-Section muss genau diesen nativen HTML-Code für ihre beiden Buttons enthalten:
 <div style="display: flex; gap: 15px; justify-content: center; margin-top: 25px;">
-  
+
     <!-- Button 1: Scrollt direkt zum Formular nach unten via JavaScript -->
-    <button onclick="document.getElementById('contact-form') ? document.getElementById('contact-form').scrollIntoView({{behavior: 'smooth'}}) : window.scrollTo({{top: document.body.scrollHeight, behavior: 'smooth'}});" 
+    <button onclick="document.getElementById('contact-form') ? document.getElementById('contact-form').scrollIntoView({{behavior: 'smooth'}}) : window.scrollTo({{top: document.body.scrollHeight, behavior: 'smooth'}});"
                     style="padding: 12px 24px; background: linear-gradient(to right, #2563eb, #7c3aed); color: white; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);">
         Projekt anfragen
     </button>
@@ -1060,8 +1420,10 @@ def upload_file_to_vercel(content: bytes) -> str:
 
 def publish_website() -> None:
     """Veröffentlicht den aktuellen HTML-Entwurf auf Vercel."""
-    html = add_chatbot_widget(
-        add_project_interactions(require_complete_html(st.session_state.generated_html))
+    html = add_interview_widget(
+        add_chatbot_widget(
+            add_project_interactions(require_complete_html(st.session_state.generated_html))
+        )
     )
     project_name = safe_project_name(st.session_state.project_name)
 
@@ -1070,6 +1432,10 @@ def publish_website() -> None:
         (
             "api/chat.py",
             Path(__file__).with_name("api").joinpath("chat.py").read_bytes(),
+        ),
+        (
+            "api/interview.py",
+            Path(__file__).with_name("api").joinpath("interview.py").read_bytes(),
         ),
         (
             "api/transcribe.py",
@@ -1090,6 +1456,21 @@ def publish_website() -> None:
         )
 
     raw_files.append((RESUME_FILE_NAME, RESUME_FILE_PATH.read_bytes()))
+
+    if MUSTERANTWORTEN_FILE_PATH.is_file():
+        raw_files.append(
+            (MUSTERANTWORTEN_FILE_NAME, MUSTERANTWORTEN_FILE_PATH.read_bytes())
+        )
+
+    if INTERVIEW_AVATAR_FILE_PATH.is_file():
+        raw_files.append(
+            (INTERVIEW_AVATAR_FILE_NAME, INTERVIEW_AVATAR_FILE_PATH.read_bytes())
+        )
+
+    if INTERVIEW_AVATAR_3D_FILE_PATH.is_file():
+        raw_files.append(
+            (INTERVIEW_AVATAR_3D_FILE_NAME, INTERVIEW_AVATAR_3D_FILE_PATH.read_bytes())
+        )
 
     certificate_paths = get_certificate_files()
     if not certificate_paths:
