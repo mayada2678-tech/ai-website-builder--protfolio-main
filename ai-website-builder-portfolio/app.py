@@ -776,13 +776,18 @@ def add_interview_widget(html: str) -> str:
         .flatMap((line) => line.match(/[^.!?]+[.!?]*/g) || [line])
         .map((chunk) => chunk.replace(/\s{2,}/g, ' ').trim())
         .filter(Boolean);
+    // Die deutsche Sprachausgabe liest englische Abkürzungen falsch aus
+    // (z. B. "AI" klingt nicht wie "Ei-Ai"). Für die gesprochene Version wird
+    // hier auf die im Deutschen korrekt ausgesprochene Abkürzung "KI" umgestellt
+    // – der angezeigte Text bleibt davon unberührt.
+    const fixPronunciationForSpeech = (text) => text.replace(/\bAI\b/gi, 'KI');
     const speak = (text) => {
         if (!voiceEnabled || !('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
         const chunks = splitIntoSpeechChunks(text);
         if (!chunks.length) return;
         chunks.forEach((chunk, index) => {
-            const utterance = new SpeechSynthesisUtterance(chunk);
+            const utterance = new SpeechSynthesisUtterance(fixPronunciationForSpeech(chunk));
             utterance.lang = preferredVoice ? preferredVoice.lang : 'de-DE';
             if (preferredVoice) utterance.voice = preferredVoice;
             if (index === 0) {
