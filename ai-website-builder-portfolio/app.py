@@ -635,7 +635,7 @@ def add_interview_widget(html: str) -> str:
         if 'id="interview-avatar-widget"' in html:
                 return html
 
-        interview_html = """
+        interview_html = r"""
 <style>
 @keyframes interviewAvatarEnter { from { opacity:0; transform:translateY(18px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
 @keyframes interviewAvatarFloat { 0%,100% { translate:0 0; } 50% { translate:0 -6px; } }
